@@ -74,6 +74,15 @@ const totalProviders = states.reduce((sum, s) => sum + s.provider_count, 0);
       </table>
     </div>
 
+    <!-- Cross-Portal Links -->
+    <div class="mt-10 pt-6 border-t border-[var(--color-border)]">
+      <h3 class="text-sm font-semibold uppercase tracking-wider mb-3">Explore More Data</h3>
+      <div class="flex flex-wrap gap-2">
+        <a href="https://plaincost.com" class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors" target="_blank" rel="noopener">Cost of Living →</a>
+        <a href="https://plaincompare.com" class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors" target="_blank" rel="noopener">Compare Cities →</a>
+      </div>
+    </div>
+
     <div class="mt-8 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-secondary)]">
       <p>Data from CMS NPPES. PlainDoctor does not rate or rank providers. <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a></p>
     </div>
