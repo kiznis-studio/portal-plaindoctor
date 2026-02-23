@@ -1,0 +1,22 @@
+# PlainDoctor — Healthcare Provider Directory
+
+> PlainDoctor provides free access to healthcare provider data from the CMS National Plan and Provider Enumeration System (NPPES). This is a directory of publicly available provider information — PlainDoctor does not rate, rank, or recommend providers.
+
+## Data Coverage
+- 2M+ active healthcare providers across the United States
+- Provider details: name, credentials, specialty, practice address, phone
+- 500+ medical specialties
+- Searchable by name, specialty, location, or NPI number
+
+## Data Source
+Centers for Medicare & Medicaid Services (CMS), National Plan and Provider Enumeration System (NPPES)
+https://download.cms.gov/nppes/NPI_Files.html
+
+## Pages
+- Homepage: https://plaindoctor.com/
+- Provider profiles: https://plaindoctor.com/provider/{slug}
+- Specialty directory: https://plaindoctor.com/specialty
+- Specialty pages: https://plaindoctor.com/specialty/{slug}
+- State directory: https://plaindoctor.com/state
+- State pages: https://plaindoctor.com/state/{slug}
+- Search: https://plaindoctor.com/search

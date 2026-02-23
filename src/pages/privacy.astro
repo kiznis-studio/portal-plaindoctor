@@ -1,0 +1,35 @@
+---
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Privacy Policy"
+  description="PlainDoctor privacy policy — how we handle your data and protect your privacy."
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Privacy Policy' }]}
+>
+  <div class="max-w-3xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-8">Privacy Policy</h1>
+    <div class="prose max-w-none space-y-6 text-[var(--color-text-secondary)]">
+      <p><strong>Last updated:</strong> February 2026</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Information We Collect</h2>
+      <p>PlainDoctor uses Umami Analytics, a privacy-focused analytics tool that does not use cookies and does not collect personal information. We collect anonymous usage data including page views, referrer information, browser type, and country of origin.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">How We Use Information</h2>
+      <p>Anonymous analytics data is used solely to understand how visitors use our site, improve content, and ensure the site functions properly.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Cookies</h2>
+      <p>PlainDoctor does not use tracking cookies. A local storage preference is used only to remember your light/dark theme choice.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Third-Party Services</h2>
+      <p>We use Cloudflare for hosting and content delivery. Cloudflare may collect minimal technical data as described in their privacy policy.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Data Source</h2>
+      <p>All provider data is sourced from the Centers for Medicare & Medicaid Services (CMS) National Plan and Provider Enumeration System (NPPES), a publicly available government dataset. We do not collect, store, or display any private patient or health information.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Contact</h2>
+      <p>For privacy-related questions, contact us at privacy@plaindoctor.com.</p>
+    </div>
+  </div>
+</Base>

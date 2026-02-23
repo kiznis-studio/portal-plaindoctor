@@ -1,0 +1,9 @@
+name = "portal-plaindoctor"
+pages_build_output_dir = "./dist"
+compatibility_date = "2025-03-25"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "plaindoctor-db"
+database_id = "PLACEHOLDER"

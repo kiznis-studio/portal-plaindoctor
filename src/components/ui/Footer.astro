@@ -1,0 +1,50 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-[var(--color-border)]">
+  <div class="max-w-6xl mx-auto px-4 py-16 md:py-20">
+    <div class="grid grid-cols-12 gap-8">
+      <div class="col-span-12 md:col-span-4">
+        <a href="/" class="font-bold text-lg text-[var(--color-primary)]">PlainDoctor</a>
+        <p class="mt-2 text-sm text-[var(--color-text-secondary)]">
+          PlainDoctor provides free access to healthcare provider data from the CMS National Plan and Provider Enumeration System (NPPES).
+        </p>
+      </div>
+
+      <div class="col-span-6 md:col-span-2">
+        <h3 class="font-semibold text-sm text-[var(--color-text)] mb-3">Quick Links</h3>
+        <ul class="space-y-2 text-sm text-[var(--color-text-secondary)]">
+          <li><a href="/" class="hover:text-[var(--color-primary)]">Home</a></li>
+          <li><a href="/specialty" class="hover:text-[var(--color-primary)]">Specialties</a></li>
+          <li><a href="/state" class="hover:text-[var(--color-primary)]">States</a></li>
+          <li><a href="/search" class="hover:text-[var(--color-primary)]">Search</a></li>
+          <li><a href="/about" class="hover:text-[var(--color-primary)]">About</a></li>
+        </ul>
+      </div>
+
+      <div class="col-span-6 md:col-span-2">
+        <h3 class="font-semibold text-sm text-[var(--color-text)] mb-3">Legal</h3>
+        <ul class="space-y-2 text-sm text-[var(--color-text-secondary)]">
+          <li><a href="/privacy" class="hover:text-[var(--color-primary)]">Privacy Policy</a></li>
+          <li><a href="/terms" class="hover:text-[var(--color-primary)]">Terms of Use</a></li>
+        </ul>
+      </div>
+
+      <div class="col-span-12 md:col-span-4">
+        <h3 class="font-semibold text-sm text-[var(--color-text)] mb-3">Our Network</h3>
+        <ul class="space-y-2 text-sm text-[var(--color-text-secondary)]">
+          <li><a href="https://plainmeds.com" class="hover:text-[var(--color-primary)]" target="_blank" rel="noopener">PlainMeds — Drug Information</a></li>
+          <li><a href="https://plainzip.com" class="hover:text-[var(--color-primary)]" target="_blank" rel="noopener">PlainZIP — ZIP Code Demographics</a></li>
+          <li><a href="https://plaincharity.com" class="hover:text-[var(--color-primary)]" target="_blank" rel="noopener">PlainCharity — Nonprofit Data</a></li>
+          <li><a href="https://plainschools.com" class="hover:text-[var(--color-primary)]" target="_blank" rel="noopener">PlainSchools — K-12 School Data</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mt-12 pt-8 border-t border-[var(--color-border)] text-center text-sm text-[var(--color-text-secondary)]">
+      <p class="mb-2">PlainDoctor is a directory of publicly available provider data. It does not rate, rank, or recommend providers.</p>
+      <p>&copy; {year} PlainDoctor. Data from CMS NPPES. Not affiliated with CMS or the federal government.</p>
+    </div>
+  </div>
+</footer>

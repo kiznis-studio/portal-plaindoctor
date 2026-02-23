@@ -1,0 +1,62 @@
+---
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="About PlainDoctor"
+  description="Learn about PlainDoctor's data source, methodology, and mission to make healthcare provider information freely accessible."
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'About' }]}
+>
+  <div class="max-w-3xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-8">About PlainDoctor</h1>
+    <div class="prose max-w-none space-y-6 text-[var(--color-text-secondary)]">
+      <p class="text-lg">PlainDoctor makes healthcare provider information freely accessible. Search for providers by name, specialty, or location using official government data.</p>
+
+      <div class="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+        <p class="text-sm text-amber-800 dark:text-amber-200"><strong>Important:</strong> PlainDoctor is a directory of publicly available provider data. We do not rate, rank, score, or recommend providers. This site does not provide medical advice.</p>
+      </div>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Data Source</h2>
+      <p>All data comes from the <strong>Centers for Medicare & Medicaid Services (CMS) National Plan and Provider Enumeration System (NPPES)</strong>. The NPPES contains information about every healthcare provider with a National Provider Identifier (NPI), which is required for all providers who bill Medicare or Medicaid.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">What Data We Show</h2>
+      <ul class="list-disc pl-6 space-y-1">
+        <li><strong>Provider name and credentials</strong> (MD, DO, NP, PA, etc.)</li>
+        <li><strong>Medical specialty</strong> from NUCC taxonomy codes</li>
+        <li><strong>Practice address and phone number</strong></li>
+        <li><strong>NPI number</strong></li>
+        <li><strong>Gender</strong> (as reported in NPPES)</li>
+        <li><strong>Enumeration date</strong> (when the NPI was assigned)</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">What We Do NOT Show</h2>
+      <ul class="list-disc pl-6 space-y-1">
+        <li>Quality ratings or scores</li>
+        <li>Patient reviews</li>
+        <li>Malpractice or disciplinary data</li>
+        <li>Pharmaceutical payment data (Open Payments)</li>
+        <li>Insurance acceptance information</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Coverage</h2>
+      <ul class="list-disc pl-6 space-y-1">
+        <li>2M+ active individual healthcare providers</li>
+        <li>500+ medical specialties</li>
+        <li>All 50 states, DC, and US territories</li>
+        <li>Updated monthly from NPPES data releases</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Important Notes</h2>
+      <ul class="list-disc pl-6 space-y-1">
+        <li>Provider information is self-reported to CMS and may not be current</li>
+        <li>Not all providers appear in NPPES (only those with NPIs)</li>
+        <li>Always verify provider information directly before making healthcare decisions</li>
+        <li>PlainDoctor is not affiliated with CMS or any government agency</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Contact</h2>
+      <p>Questions or feedback? Reach us at hello@plaindoctor.com.</p>
+    </div>
+  </div>
+</Base>

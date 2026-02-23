@@ -1,0 +1,44 @@
+---
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Terms of Use"
+  description="PlainDoctor terms of use — guidelines for using our healthcare provider directory."
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Terms of Use' }]}
+>
+  <div class="max-w-3xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-8">Terms of Use</h1>
+    <div class="prose max-w-none space-y-6 text-[var(--color-text-secondary)]">
+      <p><strong>Last updated:</strong> February 2026</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Acceptance of Terms</h2>
+      <p>By accessing PlainDoctor, you agree to these terms of use. If you do not agree, please do not use the site.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Government Data Directory</h2>
+      <p>PlainDoctor is a directory of publicly available healthcare provider information from the CMS National Plan and Provider Enumeration System (NPPES). We display factual data as published by the federal government.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">No Ratings or Recommendations</h2>
+      <p><strong>PlainDoctor does not rate, rank, score, or recommend healthcare providers.</strong> We do not provide quality assessments, patient reviews, or any editorial opinion about providers. The information shown is factual directory data only.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Not Medical Advice</h2>
+      <p>The information on PlainDoctor is provided for general informational purposes only. It does not constitute medical advice, a referral, or a recommendation to any specific provider. Always consult directly with healthcare providers about your care needs.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Data Accuracy</h2>
+      <p>Provider information is sourced from CMS NPPES data, which is self-reported by providers. While we update our data regularly, information such as addresses and phone numbers may not be current. Always verify provider details directly.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Disclaimer</h2>
+      <p>PlainDoctor is not affiliated with CMS, the U.S. Department of Health and Human Services, or any government agency. We are an independent site that transforms publicly available government data into an accessible format.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Intellectual Property</h2>
+      <p>The underlying data is public domain (U.S. government work). The site design, code, and presentation are copyrighted.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Limitation of Liability</h2>
+      <p>PlainDoctor is provided "as is" without warranties of any kind. We are not liable for any decisions made based on information provided on this site.</p>
+
+      <h2 class="text-xl font-semibold text-[var(--color-text)]">Contact</h2>
+      <p>For questions about these terms, contact us at legal@plaindoctor.com.</p>
+    </div>
+  </div>
+</Base>

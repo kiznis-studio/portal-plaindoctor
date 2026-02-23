@@ -1,0 +1,86 @@
+---
+import Base from '../layouts/Base.astro';
+import { getAllStates, getNationalStats, getTopSpecialties } from '../lib/db';
+
+const db = Astro.locals.runtime.env.DB;
+const stats = await getNationalStats(db);
+const states = await getAllStates(db);
+const topSpecialties = await getTopSpecialties(db, 12);
+---
+
+<Base
+  title="PlainDoctor — Find Healthcare Providers Across America"
+  description="Free healthcare provider directory with 2M+ providers. Search by name, specialty, or location using CMS NPPES data."
+>
+  <section class="max-w-6xl mx-auto px-4 py-12 md:py-16">
+    <div class="text-center mb-12">
+      <h1 class="text-4xl md:text-5xl font-bold mb-4">Find a Healthcare<br class="sm:hidden"/> Provider</h1>
+      <p class="text-lg text-[var(--color-text-secondary)] max-w-2xl mx-auto">
+        Search 2M+ healthcare providers by name, specialty, or location. Free directory powered by CMS NPPES data.
+      </p>
+      <form action="/search" method="get" class="mt-8 max-w-md mx-auto">
+        <div class="relative">
+          <input
+            type="text"
+            name="q"
+            placeholder="Search by name, specialty, or city..."
+            class="w-full h-12 pl-12 pr-4 text-base rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+          />
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+      </form>
+    </div>
+
+    {stats && (
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+        <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+          <div class="text-2xl font-bold text-[var(--color-primary)]">{stats.provider_count?.toLocaleString()}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Providers</div>
+        </div>
+        <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+          <div class="text-2xl font-bold text-[var(--color-primary)]">{stats.specialty_count}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Specialties</div>
+        </div>
+        <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+          <div class="text-2xl font-bold text-[var(--color-primary)]">{stats.state_count}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">States</div>
+        </div>
+        <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+          <div class="text-2xl font-bold text-[var(--color-primary)]">{stats.city_count?.toLocaleString()}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Cities</div>
+        </div>
+      </div>
+    )}
+
+    <div class="mb-12">
+      <h2 class="text-2xl font-bold mb-6">Popular Specialties</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {topSpecialties.map(spec => (
+          <a href={`/specialty/${spec.slug}`} class="flex items-center justify-between px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)] transition-colors">
+            <span class="font-medium text-sm truncate mr-2">{spec.name}</span>
+            <span class="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{spec.provider_count.toLocaleString()}</span>
+          </a>
+        ))}
+      </div>
+      <div class="mt-4 text-center">
+        <a href="/specialty" class="text-sm text-[var(--color-primary)] hover:underline">View all specialties →</a>
+      </div>
+    </div>
+
+    <h2 class="text-2xl font-bold mb-6">Browse by State</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      {states.map(state => (
+        <a href={`/state/${state.slug}`} class="flex items-center justify-between px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)] transition-colors">
+          <span class="font-medium text-sm">{state.name}</span>
+          <span class="text-xs text-[var(--color-text-secondary)]">{state.provider_count.toLocaleString()}</span>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-8 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-secondary)]">
+      <p>Data from CMS NPPES. PlainDoctor does not rate or rank providers. <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a></p>
+    </div>
+  </section>
+</Base>

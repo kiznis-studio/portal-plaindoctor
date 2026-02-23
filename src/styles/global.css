@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-accent: #0284c7;
+  --color-accent-dark: #38bdf8;
+}
+
+/* Design system color tokens — sky blue theme for healthcare/trust */
+:root {
+  --color-bg: #ffffff;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-border: #e2e8f0;
+  --color-surface: #f8fafc;
+  --color-primary: #0284c7;
+  --color-primary-light: #38bdf8;
+  --color-primary-dark: #0369a1;
+}
+
+.dark {
+  --color-bg: #0f172a;
+  --color-text: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-border: #1e293b;
+  --color-surface: #1e293b;
+  --color-primary: #38bdf8;
+  --color-primary-light: #7dd3fc;
+  --color-primary-dark: #0284c7;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Scoped link colors — content areas only */
+.prose a,
+article a,
+main p a,
+main li a {
+  color: var(--color-primary);
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s;
+}
+.prose a:hover,
+article a:hover,
+main p a:hover,
+main li a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Smooth transitions on interactive elements */
+a, button { transition: color 0.15s, background-color 0.15s, border-color 0.15s; }
