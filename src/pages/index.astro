@@ -6,6 +6,28 @@ const db = Astro.locals.runtime.env.DB;
 const stats = await getNationalStats(db);
 const states = await getAllStates(db);
 const topSpecialties = await getTopSpecialties(db, 12);
+
+const datasetSchema = {
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "U.S. Healthcare Provider Directory",
+  "description": "CMS National Plan and Provider Enumeration System data covering 7 million+ healthcare providers across 690 specialties and all 50 states.",
+  "url": "https://plaindoctor.com",
+  "keywords": ["healthcare providers", "CMS NPPES", "doctor directory", "NPI lookup", "US healthcare data"],
+  "creator": {
+    "@type": "Organization",
+    "name": "PlainDoctor"
+  },
+  "spatialCoverage": "United States",
+  "temporalCoverage": "2024/2025",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "isAccessibleForFree": true,
+  "distribution": {
+    "@type": "DataDownload",
+    "encodingFormat": "text/html",
+    "contentUrl": "https://plaindoctor.com"
+  }
+};
 ---
 
 <Base
@@ -83,4 +105,6 @@ const topSpecialties = await getTopSpecialties(db, 12);
       <p>Data from CMS NPPES. PlainDoctor does not rate or rank providers. <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a></p>
     </div>
   </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify(datasetSchema)} />
 </Base>
