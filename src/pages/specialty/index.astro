@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getAllSpecialties } from '../../lib/db';
+
+const db = Astro.locals.runtime.env.DB;
+const specialties = await getAllSpecialties(db);
+---
+
+<Base
+  title="Healthcare Specialties — Browse All Medical Specialties"
+  description="Browse 500+ healthcare specialties with provider counts. Find specialists by category including primary care, surgery, psychiatry, and more."
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Specialties' }]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Medical Specialties</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">Browse {specialties.length.toLocaleString()} healthcare specialties</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {specialties.map(spec => (
+        <a href={`/specialty/${spec.slug}`} class="flex items-center justify-between px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)] transition-colors">
+          <div class="min-w-0">
+            <div class="font-medium text-sm truncate">{spec.name}</div>
+            {spec.category && spec.category !== spec.name && (
+              <div class="text-xs text-[var(--color-text-secondary)] truncate">{spec.category}</div>
+            )}
+          </div>
+          <span class="text-xs text-[var(--color-text-secondary)] whitespace-nowrap ml-2">{spec.provider_count.toLocaleString()}</span>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-8 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-secondary)]">
+      <p>Data from CMS NPPES. Specialty classifications follow the NUCC Health Care Provider Taxonomy. <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a></p>
+    </div>
+  </section>
+</Base>

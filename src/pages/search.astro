@@ -1,0 +1,75 @@
+---
+import Base from '../layouts/Base.astro';
+import { searchProviders, formatProviderName } from '../lib/db';
+
+const query = Astro.url.searchParams.get('q') || '';
+const db = Astro.locals.runtime.env.DB;
+let results: Awaited<ReturnType<typeof searchProviders>> = [];
+
+if (query.trim()) {
+  results = await searchProviders(db, query, 50);
+}
+---
+
+<Base
+  title={query ? `Search: ${query} — PlainDoctor` : 'Search Healthcare Providers — PlainDoctor'}
+  description="Search for healthcare providers by name, specialty, city, or NPI number. Free directory powered by CMS NPPES data."
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Search' }]}
+>
+  <section class="max-w-4xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-6">Search Providers</h1>
+
+    <form action="/search" method="get" class="mb-8">
+      <div class="relative">
+        <input
+          type="text"
+          name="q"
+          value={query}
+          placeholder="Search by name, specialty, city, or NPI..."
+          class="w-full h-12 pl-12 pr-4 text-base rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+          autofocus
+        />
+        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+      <p class="mt-2 text-xs text-[var(--color-text-secondary)]">
+        Tip: Search by NPI number (10 digits) for exact lookup
+      </p>
+    </form>
+
+    {query && (
+      <p class="mb-4 text-[var(--color-text-secondary)]">
+        {results.length > 0
+          ? `Found ${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"`
+          : `No results found for "${query}"`}
+      </p>
+    )}
+
+    {results.length > 0 && (
+      <div class="space-y-3">
+        {results.map(p => (
+          <a href={`/provider/${p.slug}`} class="block bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4 hover:border-[var(--color-primary)] transition-colors">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+              <div>
+                <div class="font-medium">{formatProviderName(p)}</div>
+                <div class="text-sm text-[var(--color-primary)]">{p.specialty}</div>
+              </div>
+              <div class="text-sm text-[var(--color-text-secondary)] sm:text-right">
+                <div>{p.city}, {p.state} {p.zip}</div>
+                {p.phone && <div>{p.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}</div>}
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+
+    {!query && (
+      <div class="text-center text-[var(--color-text-secondary)] py-12">
+        <p class="text-lg mb-2">Search over 2 million healthcare providers</p>
+        <p class="text-sm">Try searching for a doctor's name, a specialty like "Cardiology", or a city</p>
+      </div>
+    )}
+  </section>
+</Base>

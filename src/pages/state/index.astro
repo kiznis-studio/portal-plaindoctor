@@ -1,0 +1,48 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getAllStates } from '../../lib/db';
+
+const db = Astro.locals.runtime.env.DB;
+const states = await getAllStates(db);
+const totalProviders = states.reduce((sum, s) => sum + s.provider_count, 0);
+---
+
+<Base
+  title="Healthcare Providers by State — All 50 States"
+  description="Browse healthcare providers in all 50 US states and territories. Find doctors, nurses, therapists, and specialists by state."
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'States' }]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Providers by State</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      {totalProviders.toLocaleString()} providers across {states.length} states and territories
+    </p>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--color-border)]">
+            <th class="text-left py-3 px-3 font-medium">State</th>
+            <th class="text-right py-3 px-3 font-medium">Providers</th>
+            <th class="text-right py-3 px-3 font-medium hidden sm:table-cell">Specialties</th>
+          </tr>
+        </thead>
+        <tbody>
+          {states.map(s => (
+            <tr class="border-b border-[var(--color-border)] hover:bg-[var(--color-surface)]">
+              <td class="py-2 px-3">
+                <a href={`/state/${s.slug}`} class="text-[var(--color-primary)] hover:underline font-medium">{s.name}</a>
+              </td>
+              <td class="py-2 px-3 text-right font-mono">{s.provider_count.toLocaleString()}</td>
+              <td class="py-2 px-3 text-right font-mono hidden sm:table-cell text-[var(--color-text-secondary)]">{s.specialty_count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-8 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-secondary)]">
+      <p>Data from CMS NPPES. <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a></p>
+    </div>
+  </section>
+</Base>

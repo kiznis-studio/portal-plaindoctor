@@ -1,0 +1,126 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getProviderBySlug, formatProviderName, getStateName } from '../../lib/db';
+
+const { slug } = Astro.params;
+const db = Astro.locals.runtime.env.DB;
+const provider = await getProviderBySlug(db, slug!);
+
+if (!provider) {
+  Astro.response.status = 404;
+  return Astro.redirect('/404');
+}
+
+const fullName = formatProviderName(provider);
+const stateName = getStateName(provider.state);
+const formattedPhone = provider.phone?.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+
+// Get specialty slug for linking
+const specRow = await db.prepare('SELECT slug FROM specialties WHERE code = ?').bind(provider.specialty_code).first<{ slug: string }>();
+const specSlug = specRow?.slug || '';
+
+// Schema.org Person markup
+const personSchema = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'Physician',
+  name: fullName,
+  medicalSpecialty: provider.specialty,
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: provider.address_line1,
+    addressLocality: provider.city,
+    addressRegion: provider.state,
+    postalCode: provider.zip,
+    addressCountry: 'US',
+  },
+  ...(provider.phone ? { telephone: formattedPhone } : {}),
+  ...(provider.gender ? { gender: provider.gender === 'M' ? 'Male' : provider.gender === 'F' ? 'Female' : undefined } : {}),
+});
+---
+
+<Base
+  title={`${fullName} — ${provider.specialty} in ${provider.city}, ${provider.state}`}
+  description={`${fullName} is a ${provider.specialty} provider in ${provider.city}, ${stateName}. NPI: ${provider.npi}. View practice address and contact information.`}
+  breadcrumbs={[
+    { name: 'Home', href: '/' },
+    { name: stateName, href: `/state/${stateName.toLowerCase().replace(/\s+/g, '-')}` },
+    { name: fullName },
+  ]}
+>
+  <section class="max-w-4xl mx-auto px-4 py-12">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold mb-2">{fullName}</h1>
+      <p class="text-lg text-[var(--color-primary)]">{provider.specialty}</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
+        <h2 class="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-4">Practice Address</h2>
+        <div class="space-y-1">
+          {provider.address_line1 && <div>{provider.address_line1}</div>}
+          <div>{provider.city}, {provider.state} {provider.zip}</div>
+          {formattedPhone && (
+            <div class="mt-3">
+              <a href={`tel:${provider.phone}`} class="text-[var(--color-primary)] hover:underline">{formattedPhone}</a>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
+        <h2 class="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-4">Provider Details</h2>
+        <dl class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <dt class="text-[var(--color-text-secondary)]">NPI</dt>
+            <dd class="font-mono">{provider.npi}</dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-[var(--color-text-secondary)]">Specialty</dt>
+            <dd>
+              {specSlug ? (
+                <a href={`/specialty/${specSlug}`} class="text-[var(--color-primary)] hover:underline">{provider.specialty}</a>
+              ) : provider.specialty}
+            </dd>
+          </div>
+          {provider.credential && (
+            <div class="flex justify-between">
+              <dt class="text-[var(--color-text-secondary)]">Credentials</dt>
+              <dd>{provider.credential}</dd>
+            </div>
+          )}
+          {provider.gender && (
+            <div class="flex justify-between">
+              <dt class="text-[var(--color-text-secondary)]">Gender</dt>
+              <dd>{provider.gender === 'M' ? 'Male' : provider.gender === 'F' ? 'Female' : provider.gender}</dd>
+            </div>
+          )}
+          {provider.enumeration_date && (
+            <div class="flex justify-between">
+              <dt class="text-[var(--color-text-secondary)]">NPI Issued</dt>
+              <dd>{provider.enumeration_date}</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mb-8">
+      {specSlug && (
+        <a href={`/specialty/${specSlug}/${provider.state.toLowerCase()}`} class="text-sm px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)]">
+          More {provider.specialty} in {provider.state} →
+        </a>
+      )}
+      <a href={`/state/${stateName.toLowerCase().replace(/\s+/g, '-')}`} class="text-sm px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)]">
+        All providers in {stateName} →
+      </a>
+    </div>
+
+    <div class="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm">
+      <p class="text-amber-800 dark:text-amber-200">
+        <strong>Disclaimer:</strong> Data from CMS NPPES. PlainDoctor does not rate or rank providers. Provider information is self-reported and may not be current. Always verify information directly with the provider.
+        <a href="/about" class="underline">Learn more</a>
+      </p>
+    </div>
+  </section>
+  <script type="application/ld+json" set:html={personSchema} />
+</Base>

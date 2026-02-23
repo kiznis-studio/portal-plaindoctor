@@ -1,0 +1,81 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getSpecialtyBySlug, getSpecialtyStates, getStateName, formatNumber } from '../../lib/db';
+
+const { slug } = Astro.params;
+const db = Astro.locals.runtime.env.DB;
+const specialty = await getSpecialtyBySlug(db, slug!);
+
+if (!specialty) {
+  Astro.response.status = 404;
+  return Astro.redirect('/404');
+}
+
+const states = await getSpecialtyStates(db, specialty.code);
+const totalProviders = states.reduce((sum, s) => sum + s.provider_count, 0);
+---
+
+<Base
+  title={`${specialty.name} — Find ${specialty.name} Providers`}
+  description={`Find ${totalProviders.toLocaleString()} ${specialty.name} providers across ${states.length} states. Browse by state or search by name and location.`}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Specialties', href: '/specialty' }, { name: specialty.name }]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">{specialty.name}</h1>
+    {specialty.category && specialty.category !== specialty.name && (
+      <p class="text-[var(--color-text-secondary)] mb-2">Category: {specialty.category}</p>
+    )}
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      {totalProviders.toLocaleString()} providers across {states.length} states
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{totalProviders.toLocaleString()}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Total Providers</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{states.length}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">States</div>
+      </div>
+      {states.length > 0 && (
+        <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+          <div class="text-2xl font-bold text-[var(--color-primary)]">{getStateName(states[0].state)}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Most Providers</div>
+        </div>
+      )}
+    </div>
+
+    <h2 class="text-xl font-semibold mb-4">Providers by State</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--color-border)]">
+            <th class="text-left py-3 px-3 font-medium">State</th>
+            <th class="text-right py-3 px-3 font-medium">Providers</th>
+            <th class="text-right py-3 px-3 font-medium hidden sm:table-cell">% of Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {states.map(s => (
+            <tr class="border-b border-[var(--color-border)] hover:bg-[var(--color-surface)]">
+              <td class="py-2 px-3">
+                <a href={`/specialty/${slug}/${s.state.toLowerCase()}`} class="text-[var(--color-primary)] hover:underline">
+                  {getStateName(s.state)}
+                </a>
+              </td>
+              <td class="py-2 px-3 text-right font-mono">{s.provider_count.toLocaleString()}</td>
+              <td class="py-2 px-3 text-right font-mono hidden sm:table-cell text-[var(--color-text-secondary)]">
+                {totalProviders > 0 ? ((s.provider_count / totalProviders) * 100).toFixed(1) + '%' : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-8 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-secondary)]">
+      <p>Data from CMS NPPES. PlainDoctor does not rate or rank providers. <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a></p>
+    </div>
+  </section>
+</Base>

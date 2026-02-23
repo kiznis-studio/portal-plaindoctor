@@ -1,0 +1,92 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getStateBySlug, getCitiesByState, getTopSpecialties, getStateName } from '../../lib/db';
+
+const { slug } = Astro.params;
+const db = Astro.locals.runtime.env.DB;
+const state = await getStateBySlug(db, slug!);
+
+if (!state) {
+  Astro.response.status = 404;
+  return Astro.redirect('/404');
+}
+
+const cities = await getCitiesByState(db, state.abbr, 30);
+
+// Get top specialties for this state from specialty_state table
+const { results: stateSpecialties } = await db.prepare(`
+  SELECT ss.specialty_code, ss.provider_count, s.name, s.slug
+  FROM specialty_state ss
+  JOIN specialties s ON s.code = ss.specialty_code
+  WHERE ss.state = ?
+  ORDER BY ss.provider_count DESC
+  LIMIT 20
+`).bind(state.abbr).all<{ specialty_code: string; provider_count: number; name: string; slug: string }>();
+---
+
+<Base
+  title={`Healthcare Providers in ${state.name} — ${state.provider_count.toLocaleString()} Providers`}
+  description={`Find ${state.provider_count.toLocaleString()} healthcare providers in ${state.name} across ${state.specialty_count} specialties. Browse by city or specialty.`}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'States', href: '/state' }, { name: state.name }]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Healthcare Providers in {state.name}</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      {state.provider_count.toLocaleString()} providers across {state.specialty_count} specialties
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{state.provider_count.toLocaleString()}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Providers</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{state.specialty_count}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Specialties</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{cities.length}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Cities (10+)</div>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <div>
+        <h2 class="text-xl font-semibold mb-4">Top Specialties</h2>
+        <div class="space-y-2">
+          {stateSpecialties.map(ss => (
+            <a href={`/specialty/${ss.slug}/${state.abbr.toLowerCase()}`} class="flex items-center justify-between px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)] transition-colors text-sm">
+              <span class="truncate mr-2">{ss.name}</span>
+              <span class="text-[var(--color-text-secondary)] whitespace-nowrap">{ss.provider_count.toLocaleString()}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-xl font-semibold mb-4">Top Cities</h2>
+        <div class="space-y-2">
+          {cities.map(c => (
+            <div class="flex items-center justify-between px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm">
+              <span>{c.city}</span>
+              <span class="text-[var(--color-text-secondary)]">{c.provider_count.toLocaleString()} providers</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-10">
+      <h2 class="text-xl font-semibold mb-4">Related</h2>
+      <div class="flex flex-wrap gap-2">
+        <a href={`https://plainzip.com/state/${slug}`} target="_blank" rel="noopener" class="text-xs px-3 py-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full hover:border-[var(--color-primary)]">ZIP Codes</a>
+        <a href={`https://plaincrime.com/state/${slug}`} target="_blank" rel="noopener" class="text-xs px-3 py-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full hover:border-[var(--color-primary)]">Crime Data</a>
+        <a href={`https://plaincharity.com/state/${state.abbr.toLowerCase()}`} target="_blank" rel="noopener" class="text-xs px-3 py-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full hover:border-[var(--color-primary)]">Nonprofits</a>
+      </div>
+    </div>
+
+    <div class="mt-8 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-secondary)]">
+      <p>Data from CMS NPPES. PlainDoctor does not rate or rank providers. <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a></p>
+    </div>
+  </section>
+</Base>
