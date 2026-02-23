@@ -6,4 +6,4 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "plaindoctor-db"
-database_id = "PLACEHOLDER"
+database_id = "058a226e-808c-4e9a-bc79-16747df375d2"
