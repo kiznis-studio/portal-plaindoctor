@@ -1,0 +1,180 @@
+---
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+
+const title = 'How to Find a Doctor: A Step-by-Step Guide';
+const description = 'A practical guide to finding and choosing a healthcare provider — including how to use the NPI registry to verify credentials, what degrees mean, and questions to ask before your first appointment.';
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is an NPI number and how do I look one up?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "An NPI (National Provider Identifier) is a unique 10-digit number assigned by CMS to every healthcare provider who bills Medicare or Medicaid. You can look up any provider's NPI at the NPPES NPI Registry (npiregistry.cms.hhs.gov) or through PlainDoctor's search. The NPI record shows the provider's name, specialty taxonomy code, practice address, and the date they were enumerated."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the difference between an MD and a DO?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "An MD (Doctor of Medicine) and a DO (Doctor of Osteopathic Medicine) are both fully licensed physicians who can prescribe medication and perform surgery. DOs receive additional training in osteopathic manipulative medicine (OMM). Both complete four years of medical school, residency, and board exams. In practice, the distinction is minor for most patients; both types of physicians provide the full range of medical care."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I check if a doctor is board certified?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You can verify board certification through the American Board of Medical Specialties (ABMS) at certificationmatters.org, or for osteopathic physicians through the American Osteopathic Association (AOA) at osteopathic.org. Board certification is voluntary but indicates a physician has passed rigorous specialty exams beyond basic licensure. It is separate from state licensure, which is required to practice."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What questions should I ask when choosing a new doctor?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Key questions include: Are you accepting new patients? Do you accept my insurance? What hospitals are you affiliated with? What is your after-hours or urgent care coverage? How do you prefer to communicate with patients (portal, phone, email)? What is your approach to preventive care? For specialists: Are you board certified in this specialty? How many times have you performed this procedure?"
+      }
+    }
+  ]
+};
+---
+
+<Base title={title} description={description}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Guides', href: '/guides' }, { name: 'How to Find a Doctor' }]}
+>
+  <div class="max-w-3xl mx-auto px-4 py-8">
+
+    <header class="mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">How to Find a Doctor: A Step-by-Step Guide</h1>
+      <p class="text-lg text-gray-500 dark:text-gray-400 mt-2">Using official data to verify providers and make an informed choice.</p>
+    </header>
+
+    <div class="bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-xl p-6 mb-10">
+      <div class="text-sm font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 mb-2">Key Takeaway</div>
+      <p class="text-gray-700 dark:text-gray-300">Every licensed healthcare provider who bills Medicare or Medicaid has a unique NPI number in the CMS NPPES registry. Start there to verify a provider's name, specialty, and practice location before your first visit. Then check state licensure and board certification to complete the picture.</p>
+    </div>
+
+    <div class="prose prose-gray dark:prose-invert max-w-none">
+
+      <h2>Step 1 — Know What You're Looking For</h2>
+      <p>
+        Before searching for a doctor, clarify what type of provider you need. For routine checkups, preventive care, and managing common illnesses, a primary care physician (PCP) is the right starting point. PCPs include family medicine doctors, general internists, and pediatricians. If you have a specific condition or need a procedure, a specialist may be more appropriate — but many specialists require a referral from a PCP for insurance coverage purposes.
+      </p>
+      <p>
+        Consider practical factors early: geographic proximity to your home or workplace, whether the provider accepts your insurance plan, hospital affiliations (relevant if you might need hospitalization), and whether the practice is accepting new patients. These logistical factors eliminate many options quickly, so it's better to check them before investing time researching a specific provider.
+      </p>
+
+      <h2>Step 2 — Search the NPI Registry</h2>
+      <p>
+        The National Plan and Provider Enumeration System (NPPES), maintained by the Centers for Medicare &amp; Medicaid Services (CMS), is the most authoritative public database of U.S. healthcare providers. Every provider with a National Provider Identifier (NPI) appears in this registry. You can search it directly at the <a href="https://npiregistry.cms.hhs.gov/" target="_blank" rel="noopener noreferrer">CMS NPI Registry</a>, or use <a href="/search">PlainDoctor's search</a> which indexes the same data.
+      </p>
+      <p>
+        An NPI record includes the provider's full legal name, primary specialty taxonomy code (which identifies their specialty category), practice address, phone number, and the date their NPI was issued. Cross-referencing a provider's NPI confirms that the person is a real, federally registered healthcare provider — not just a name on a website.
+      </p>
+      <p>
+        Note that some providers hold multiple NPI numbers (individual NPI Type 1, and organizational NPI Type 2 for a practice entity). When searching for a doctor as an individual, filter for Type 1 NPIs.
+      </p>
+
+      <h2>Step 3 — Understand Provider Credentials</h2>
+      <p>
+        Healthcare providers use a range of credential abbreviations after their names. Understanding what these mean helps you choose the right type of provider:
+      </p>
+      <p>
+        <strong>MD (Doctor of Medicine)</strong> — A fully licensed physician who completed four years of medical school at an allopathic institution, followed by residency training (3–7 years depending on specialty). MDs are licensed by state medical boards and can prescribe medication and perform surgery in their trained specialty.
+      </p>
+      <p>
+        <strong>DO (Doctor of Osteopathic Medicine)</strong> — A fully licensed physician who completed four years of osteopathic medical school. DOs have the same prescribing and surgical privileges as MDs and receive additional training in osteopathic manipulative medicine (OMM). Most patients will find no practical difference between care from an MD and a DO.
+      </p>
+      <p>
+        <strong>NP (Nurse Practitioner)</strong> — An advanced practice registered nurse (APRN) who has completed a master's or doctoral degree in nursing. NPs can diagnose conditions, order tests, and prescribe medications, though their scope of practice varies by state. Some states allow NPs to practice independently; others require physician supervision.
+      </p>
+      <p>
+        <strong>PA (Physician Assistant)</strong> — A nationally certified provider with a master's-level degree who works as part of a physician-led team. PAs can diagnose, treat, and prescribe, but their scope of practice is supervised by a licensed physician. The credential has recently been renamed "Physician Associate" by many professional organizations, though PA is still widely used.
+      </p>
+      <p>
+        <strong>Other common credentials:</strong> CNM (Certified Nurse-Midwife), CRNA (Certified Registered Nurse Anesthetist), CNS (Clinical Nurse Specialist), DPM (Doctor of Podiatric Medicine), OD (Doctor of Optometry), DDS/DMD (Dentist), DC (Doctor of Chiropractic), PhD/PsyD (Psychologist).
+      </p>
+
+      <h2>Step 4 — Verify State Licensure</h2>
+      <p>
+        An NPI number confirms a provider is registered with CMS, but it does not confirm that their state license is active. A provider's state medical board license is the legal authorization to practice in that state. Licenses can be suspended, revoked, or placed on probation — and these actions are publicly documented.
+      </p>
+      <p>
+        Every state has a medical board that maintains a publicly searchable license database. For physicians, the Federation of State Medical Boards (FSMB) operates <a href="https://www.docinfo.org/" target="_blank" rel="noopener noreferrer">DocInfo.org</a>, which aggregates license and disciplinary information from all 50 states. You can search by name and verify active license status, board actions, and malpractice reports submitted by insurers.
+      </p>
+      <p>
+        For nurse practitioners and physician assistants, check the relevant state nursing or PA board website directly. Most state health department websites have a license lookup tool accessible through their main portal.
+      </p>
+
+      <h2>Step 5 — Check Board Certification</h2>
+      <p>
+        Board certification is voluntary and goes beyond basic licensure. A board-certified physician has passed comprehensive specialty exams administered by one of 24 member boards of the American Board of Medical Specialties (ABMS) or the American Osteopathic Association (AOA). Board certification indicates demonstrated expertise in a specialty area.
+      </p>
+      <p>
+        To verify ABMS certification, search at <a href="https://www.certificationmatters.org/" target="_blank" rel="noopener noreferrer">certificationmatters.org</a> (free public lookup). For AOA-certified osteopathic physicians, check <a href="https://www.osteopathic.org/" target="_blank" rel="noopener noreferrer">osteopathic.org</a>. Enter the physician's name and state to confirm their certification status, specialty, and whether their certification is current (many certifications require periodic recertification exams).
+      </p>
+      <p>
+        Note that some physicians are board eligible but not yet certified — this typically means they have completed training but have not yet taken or passed the certification exam. It is common early in a career and does not necessarily indicate a problem.
+      </p>
+
+      <h2>Step 6 — Evaluate the Practice and Ask Questions</h2>
+      <p>
+        Credentials verify that a provider is qualified. Choosing the right fit requires a few more steps:
+      </p>
+      <p>
+        <strong>Check hospital affiliations.</strong> Physicians are credentialed by each hospital where they have admitting privileges. If you need hospitalization, knowing which hospital your doctor is affiliated with matters — especially if you have a preferred facility or if a specific hospital has specialists you may need.
+      </p>
+      <p>
+        <strong>Review patient feedback cautiously.</strong> Online reviews can surface consistent patterns (very long wait times, communication issues) but are not statistically reliable for individual quality of care. One-star reviews are often outliers; patterns across many reviews are more informative. Healthgrades, Zocdoc, and Google reviews are common sources.
+      </p>
+      <p>
+        <strong>Ask about communication preferences.</strong> Many practices now offer secure patient portals (MyChart, Healow) for messaging, test results, and appointment scheduling. If direct communication with your provider matters to you, ask during the first visit whether the doctor or a staff member responds to portal messages.
+      </p>
+      <p>
+        <strong>Confirm coverage continuity.</strong> Ask whether the practice has coverage arrangements for after-hours or urgent needs. Large practices often have on-call physicians; solo practitioners may direct after-hours calls to an answering service or urgent care.
+      </p>
+      <p>
+        Use our <a href="/specialties/">specialty directory</a> to find providers in specific medical fields, or browse by <a href="/states/">state</a> to see providers in your area.
+      </p>
+
+      <h2>Frequently Asked Questions</h2>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">What is an NPI number and how do I look one up?</summary>
+        <p>An NPI (National Provider Identifier) is a unique 10-digit number assigned by CMS to every healthcare provider who bills Medicare or Medicaid. You can look up any provider's NPI at the NPPES NPI Registry (npiregistry.cms.hhs.gov) or through PlainDoctor's search. The NPI record shows the provider's name, specialty taxonomy code, practice address, and the date they were enumerated.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">What is the difference between an MD and a DO?</summary>
+        <p>An MD (Doctor of Medicine) and a DO (Doctor of Osteopathic Medicine) are both fully licensed physicians who can prescribe medication and perform surgery. DOs receive additional training in osteopathic manipulative medicine (OMM). Both complete four years of medical school, residency, and board exams. In practice, the distinction is minor for most patients; both types of physicians provide the full range of medical care.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">How do I check if a doctor is board certified?</summary>
+        <p>You can verify board certification through the American Board of Medical Specialties (ABMS) at certificationmatters.org, or for osteopathic physicians through the American Osteopathic Association (AOA) at osteopathic.org. Board certification is voluntary but indicates a physician has passed rigorous specialty exams beyond basic licensure. It is separate from state licensure, which is required to practice.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">What questions should I ask when choosing a new doctor?</summary>
+        <p>Key questions include: Are you accepting new patients? Do you accept my insurance? What hospitals are you affiliated with? What is your after-hours or urgent care coverage? How do you prefer to communicate with patients (portal, phone, email)? What is your approach to preventive care? For specialists: Are you board certified in this specialty? How many times have you performed this procedure?</p>
+      </details>
+    </div>
+
+    <div class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        <strong>Sources:</strong> Centers for Medicare &amp; Medicaid Services, <a href="https://npiregistry.cms.hhs.gov/" class="text-teal-600 dark:text-teal-400 hover:underline" target="_blank" rel="noopener noreferrer">NPPES NPI Registry</a>; American Board of Medical Specialties, <a href="https://www.certificationmatters.org/" class="text-teal-600 dark:text-teal-400 hover:underline" target="_blank" rel="noopener noreferrer">Certification Matters</a>; Federation of State Medical Boards, <a href="https://www.docinfo.org/" class="text-teal-600 dark:text-teal-400 hover:underline" target="_blank" rel="noopener noreferrer">DocInfo.org</a>.
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        <strong>Last updated:</strong> February 2026
+      </p>
+    </div>
+  </div>
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+</Base>

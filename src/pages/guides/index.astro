@@ -1,0 +1,75 @@
+---
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+
+const title = 'Healthcare Guides — Understanding Doctors, Credentials & Insurance';
+const description = 'Plain-language guides to finding a doctor, understanding medical specialties, verifying credentials, and navigating insurance networks and telehealth options.';
+
+const guides = [
+  {
+    title: 'How to Find a Doctor: A Step-by-Step Guide',
+    href: '/guides/how-to-find-a-doctor',
+    description: 'Use the NPI registry to verify providers, understand credentials like MD, DO, NP, and PA, and ask the right questions before choosing a new doctor.',
+    icon: '🔍',
+  },
+  {
+    title: 'Medical Specialties Explained: Who Treats What',
+    href: '/guides/medical-specialties-explained',
+    description: 'Understand the difference between primary care and specialists, major specialty categories, sub-specialties, and how NPI taxonomy codes work.',
+    icon: '🩺',
+  },
+  {
+    title: 'In-Network vs Out-of-Network: Understanding Provider Networks',
+    href: '/guides/in-network-vs-out-of-network',
+    description: 'Learn how insurance networks affect your costs, what balance billing means, your rights under the No Surprises Act, and how to verify network status.',
+    icon: '🏥',
+  },
+  {
+    title: 'Telehealth Guide: Virtual Care Options in 2026',
+    href: '/guides/telehealth-guide',
+    description: 'What conditions are appropriate for telehealth, types of virtual care, how insurance covers it, and how to find telehealth-enabled providers.',
+    icon: '💻',
+  },
+  {
+    title: "How to Verify a Doctor's Credentials and Licenses",
+    href: '/guides/credential-verification-guide',
+    description: 'Look up NPI numbers, check state medical board licenses, verify board certification through ABMS and AOA, and search disciplinary action databases.',
+    icon: '✅',
+  },
+];
+---
+
+<Base title={title} description={description}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Guides' }]}
+>
+  <div class="max-w-4xl mx-auto px-4 py-8">
+
+    <header class="mb-10">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">Healthcare Provider Guides</h1>
+      <p class="text-lg text-gray-500 dark:text-gray-400 mt-2">
+        Plain-language guides to help you find and verify healthcare providers, understand medical specialties, and navigate insurance and telehealth options.
+      </p>
+    </header>
+
+    <div class="grid gap-6 sm:grid-cols-2">
+      {guides.map(guide => (
+        <a href={guide.href} class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md transition-all">
+          <div class="text-3xl mb-3">{guide.icon}</div>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+            {guide.title}
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+            {guide.description}
+          </p>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">About These Guides</h2>
+      <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+        PlainDoctor guides are written to help patients and caregivers understand how the U.S. healthcare provider system works. All information draws on official government data, including the CMS National Plan and Provider Enumeration System (NPPES), the American Board of Medical Specialties (ABMS), and state medical boards. Use our <a href="/specialties/" class="text-teal-600 dark:text-teal-400 hover:underline">specialty directory</a> and <a href="/states/" class="text-teal-600 dark:text-teal-400 hover:underline">state pages</a> to search providers in your area.
+      </p>
+    </div>
+  </div>
+</Base>

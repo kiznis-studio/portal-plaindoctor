@@ -1,0 +1,190 @@
+---
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+
+const title = 'Medical Specialties Explained: Who Treats What';
+const description = 'Understand the difference between primary care physicians and specialists, major medical specialty categories, sub-specialties, fellowship training, and how NUCC taxonomy codes appear in NPI data.';
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "When should I see a specialist instead of my primary care doctor?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "See a specialist when your primary care physician refers you for a condition outside their expertise, when you need a procedure that requires specialized training (like cardiac catheterization or colonoscopy), when a diagnosis is uncertain and needs subspecialty workup, or when a chronic condition requires ongoing management by a specialist (such as rheumatoid arthritis managed by a rheumatologist). Many insurance plans require a PCP referral before covering specialist visits."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the difference between a residency and a fellowship?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A residency is the required postgraduate training after medical school, typically lasting 3–7 years depending on specialty, that qualifies a physician for independent practice and board eligibility. A fellowship is additional optional subspecialty training (1–3 years) completed after residency for physicians who want to specialize further — for example, a cardiologist completing an electrophysiology fellowship, or a gastroenterologist completing an advanced endoscopy fellowship."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is a NUCC taxonomy code and where do I see it?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The NUCC (National Uniform Claim Committee) taxonomy code is a standardized 10-character code that classifies a healthcare provider's specialty and type of practice. It appears in every NPPES NPI record and on insurance claims. For example, the taxonomy code 207Q00000X corresponds to Family Medicine, and 207RC0000X corresponds to Cardiovascular Disease (Cardiology). PlainDoctor uses these taxonomy codes to display a provider's specialty."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can a doctor have more than one specialty?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. A physician can be board certified in more than one specialty and can have multiple NUCC taxonomy codes in their NPI record. For example, a physician might be board certified in both Internal Medicine and Geriatric Medicine, or in Pediatrics and Pediatric Cardiology. The NPI record designates one taxonomy code as primary and lists others as secondary."
+      }
+    }
+  ]
+};
+---
+
+<Base title={title} description={description}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Guides', href: '/guides' }, { name: 'Medical Specialties Explained' }]}
+>
+  <div class="max-w-3xl mx-auto px-4 py-8">
+
+    <header class="mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">Medical Specialties Explained: Who Treats What</h1>
+      <p class="text-lg text-gray-500 dark:text-gray-400 mt-2">A guide to understanding the landscape of medical specialties, from primary care to highly specialized fellowship-trained subspecialists.</p>
+    </header>
+
+    <div class="bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-xl p-6 mb-10">
+      <div class="text-sm font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 mb-2">Key Takeaway</div>
+      <p class="text-gray-700 dark:text-gray-300">The U.S. healthcare system has over 120 recognized medical specialties and sub-specialties, each with its own training pathway and board certification process. The CMS NPPES registry classifies every provider using standardized NUCC taxonomy codes, which is how PlainDoctor categorizes the 690+ specialty types in its database.</p>
+    </div>
+
+    <div class="prose prose-gray dark:prose-invert max-w-none">
+
+      <h2>Primary Care: Your Starting Point</h2>
+      <p>
+        Primary care physicians (PCPs) are generalists who manage a broad range of health conditions, provide preventive care, coordinate referrals, and serve as the entry point to the healthcare system. There are three main primary care specialties:
+      </p>
+      <p>
+        <strong>Family Medicine</strong> physicians care for patients across all ages and both sexes. Their training covers pediatrics, adult medicine, obstetrics, geriatrics, and mental health in a single residency. Family physicians are particularly common in rural and underserved areas where subspecialists may not be available.
+      </p>
+      <p>
+        <strong>Internal Medicine</strong> physicians (internists) specialize in adult medicine. They manage complex, chronic, and multi-system disease in adult patients. Internal medicine residency is three years, and many internists go on to subspecialty fellowship training (see below).
+      </p>
+      <p>
+        <strong>Pediatrics</strong> physicians care for patients from birth through young adulthood. Pediatric residency is three years, and like internal medicine, many pediatricians pursue fellowship subspecialties such as pediatric cardiology, pediatric neurology, or neonatology.
+      </p>
+      <p>
+        Other providers who often function as PCPs include geriatricians (specialists in older adult care), obstetrician-gynecologists (OB/GYNs) for women's health, and nurse practitioners or physician assistants practicing in primary care settings.
+      </p>
+
+      <h2>When You Need a Specialist</h2>
+      <p>
+        Specialists complete additional residency training beyond medical school — and many complete further fellowship training — to focus on a specific organ system, patient population, or set of procedures. Seeing the right specialist can make a significant difference for complex or chronic conditions.
+      </p>
+      <p>
+        Generally, a referral to a specialist is appropriate when: your primary care physician identifies a condition outside their scope; you need a diagnostic procedure only specialists perform; a chronic condition requires subspecialty management; or you are seeking a second opinion on a diagnosis or treatment plan.
+      </p>
+      <p>
+        Many insurance plans require a referral from your PCP before covering a specialist visit (this is called a "gatekeeper" model). PPO plans and some HMOs allow self-referral to specialists, but out-of-pocket costs may be higher. Always check your plan's requirements before booking a specialist appointment.
+      </p>
+
+      <h2>Major Specialty Categories</h2>
+      <p>
+        Medical specialties broadly fall into several categories based on approach and training:
+      </p>
+      <p>
+        <strong>Medical specialties</strong> (non-surgical) use medications, procedures, and monitoring to manage disease. Examples include cardiology (heart), gastroenterology (digestive system), pulmonology (lungs), nephrology (kidneys), endocrinology (hormones and metabolism), rheumatology (joints and autoimmune disease), and hematology/oncology (blood disorders and cancer).
+      </p>
+      <p>
+        <strong>Surgical specialties</strong> treat conditions primarily through operative intervention. General surgery covers abdominal and soft tissue procedures. Other surgical specialties include orthopedic surgery (bones, joints, spine), neurosurgery (brain and nervous system), cardiothoracic surgery (heart and chest), vascular surgery, urology (urinary tract and male reproductive system), and plastic/reconstructive surgery.
+      </p>
+      <p>
+        <strong>Hospital-based specialties</strong> provide services primarily to inpatients. Radiology reads and interprets imaging studies. Anesthesiology manages sedation and pain control during procedures. Pathology diagnoses disease by analyzing tissue samples, biopsies, and lab tests. Emergency medicine manages acute illness and injury.
+      </p>
+      <p>
+        <strong>Behavioral and mental health</strong> specialties include psychiatry (MD/DO prescribers), psychology (PhD/PsyD, non-prescribers), and neuropsychology.
+      </p>
+      <p>
+        <strong>Allied health and non-physician specialties</strong> in the NPPES registry include dentistry, optometry, physical therapy, occupational therapy, speech-language pathology, chiropractic, podiatry, and pharmacy.
+      </p>
+
+      <h2>Sub-Specialties and Fellowship Training</h2>
+      <p>
+        Many medical and surgical specialties have recognized sub-specialties that require fellowship training — an additional 1–3 years of supervised training after completing a primary specialty residency. Fellowship-trained subspecialists have the deepest expertise in their narrow area.
+      </p>
+      <p>
+        Some common examples of internal medicine subspecialties (reached through internal medicine residency + fellowship):
+      </p>
+      <ul>
+        <li><strong>Cardiology</strong> — Heart disease; sub-subspecialties include interventional cardiology (angioplasty, stents) and electrophysiology (heart rhythm disorders)</li>
+        <li><strong>Gastroenterology</strong> — Digestive system; includes hepatology (liver disease) and advanced endoscopy</li>
+        <li><strong>Pulmonology / Critical Care Medicine</strong> — Lung disease and ICU care</li>
+        <li><strong>Infectious Disease</strong> — Complex infections, HIV, tropical medicine</li>
+        <li><strong>Geriatric Medicine</strong> — Care of older adults with multiple comorbidities</li>
+        <li><strong>Palliative Care</strong> — Symptom management and end-of-life care</li>
+      </ul>
+      <p>
+        Surgical subspecialties (reached through general surgery residency + fellowship) include colorectal surgery, surgical oncology, minimally invasive/bariatric surgery, and trauma/acute care surgery.
+      </p>
+      <p>
+        Orthopedic subspecialties include sports medicine, spine surgery, joint replacement, hand surgery, and pediatric orthopedics. Neurosurgery subspecialties include spine, cerebrovascular (aneurysm/stroke), neuro-oncology, and functional neurosurgery (deep brain stimulation).
+      </p>
+
+      <h2>Understanding Taxonomy Codes in NPI Data</h2>
+      <p>
+        Every provider's NPI record includes one or more NUCC Health Care Provider Taxonomy Codes — a standardized classification system maintained by the National Uniform Claim Committee. These 10-character alphanumeric codes identify a provider's type and specialty in a machine-readable format used across the healthcare system for billing, credentialing, and data analysis.
+      </p>
+      <p>
+        The taxonomy code structure has three levels: provider type (individuals vs. organizations), classification (the broad specialty), and specialization (the sub-specialty). For example:
+      </p>
+      <ul>
+        <li><code>207Q00000X</code> — Allopathic &amp; Osteopathic Physicians / Family Medicine</li>
+        <li><code>207RC0000X</code> — Allopathic &amp; Osteopathic Physicians / Internal Medicine / Cardiovascular Disease</li>
+        <li><code>207RI0011X</code> — Allopathic &amp; Osteopathic Physicians / Internal Medicine / Interventional Cardiology</li>
+        <li><code>363L00000X</code> — Nurse Practitioner</li>
+        <li><code>363A00000X</code> — Physician Assistant</li>
+      </ul>
+      <p>
+        PlainDoctor maps these taxonomy codes to readable specialty names displayed on provider profiles and in the <a href="/specialties/">specialty directory</a>. The full NUCC taxonomy code set includes over 900 distinct codes covering every recognized provider type in U.S. healthcare.
+      </p>
+      <p>
+        Providers can list up to 15 taxonomy codes in their NPI record, with one designated as the primary taxonomy. When a provider's primary taxonomy shows a broad specialty (like "Internal Medicine"), they may practice general internal medicine or be a subspecialist whose secondary taxonomy code reflects their fellowship training.
+      </p>
+
+      <h2>Frequently Asked Questions</h2>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">When should I see a specialist instead of my primary care doctor?</summary>
+        <p>See a specialist when your primary care physician refers you for a condition outside their expertise, when you need a procedure that requires specialized training (like cardiac catheterization or colonoscopy), when a diagnosis is uncertain and needs subspecialty workup, or when a chronic condition requires ongoing management by a specialist (such as rheumatoid arthritis managed by a rheumatologist). Many insurance plans require a PCP referral before covering specialist visits.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">What is the difference between a residency and a fellowship?</summary>
+        <p>A residency is the required postgraduate training after medical school, typically lasting 3–7 years depending on specialty, that qualifies a physician for independent practice and board eligibility. A fellowship is additional optional subspecialty training (1–3 years) completed after residency for physicians who want to specialize further — for example, a cardiologist completing an electrophysiology fellowship, or a gastroenterologist completing an advanced endoscopy fellowship.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">What is a NUCC taxonomy code and where do I see it?</summary>
+        <p>The NUCC (National Uniform Claim Committee) taxonomy code is a standardized 10-character code that classifies a healthcare provider's specialty and type of practice. It appears in every NPPES NPI record and on insurance claims. For example, the taxonomy code 207Q00000X corresponds to Family Medicine, and 207RC0000X corresponds to Cardiovascular Disease (Cardiology). PlainDoctor uses these taxonomy codes to display a provider's specialty.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">Can a doctor have more than one specialty?</summary>
+        <p>Yes. A physician can be board certified in more than one specialty and can have multiple NUCC taxonomy codes in their NPI record. For example, a physician might be board certified in both Internal Medicine and Geriatric Medicine, or in Pediatrics and Pediatric Cardiology. The NPI record designates one taxonomy code as primary and lists others as secondary.</p>
+      </details>
+    </div>
+
+    <div class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        <strong>Sources:</strong> Centers for Medicare &amp; Medicaid Services, <a href="https://npiregistry.cms.hhs.gov/" class="text-teal-600 dark:text-teal-400 hover:underline" target="_blank" rel="noopener noreferrer">NPPES NPI Registry</a>; National Uniform Claim Committee, <a href="https://www.nucc.org/index.php/code-sets-mainmenu-41/provider-taxonomy-mainmenu-40" class="text-teal-600 dark:text-teal-400 hover:underline" target="_blank" rel="noopener noreferrer">Provider Taxonomy Codes</a>; American Board of Medical Specialties, <a href="https://www.abms.org/" class="text-teal-600 dark:text-teal-400 hover:underline" target="_blank" rel="noopener noreferrer">ABMS.org</a>.
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        <strong>Last updated:</strong> February 2026
+      </p>
+    </div>
+  </div>
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+</Base>

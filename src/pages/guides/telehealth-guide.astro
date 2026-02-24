@@ -1,0 +1,193 @@
+---
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+
+const title = 'Telehealth Guide: Virtual Care Options in 2026';
+const description = 'Learn what conditions are appropriate for telehealth, how video, phone, and asynchronous care differ, how insurance covers virtual visits, and how to find telehealth-enabled providers.';
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does insurance cover telehealth visits?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Most private insurance plans now cover telehealth visits, particularly video visits with in-network providers. Coverage expanded significantly during the COVID-19 public health emergency and many insurers have maintained broad telehealth benefits. Medicare covers telehealth for most beneficiaries through at least 2025 under extended flexibilities. Medicaid coverage varies by state. Always check your specific plan to confirm which telehealth services are covered and at what cost-sharing level."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What conditions can be treated via telehealth?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Telehealth is well-suited for: acute conditions like respiratory infections, UTIs, sinus infections, and mild rashes; mental health therapy and psychiatric medication management; chronic disease management for stable conditions like hypertension, diabetes, and asthma; follow-up visits after in-person care; prescription renewals; preventive care discussions and health coaching. It is generally not appropriate for conditions requiring physical examination, imaging, lab work that cannot be done remotely, or emergencies."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is asynchronous telehealth?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Asynchronous telehealth (also called store-and-forward) involves submitting medical information — photos, symptom questionnaires, lab results, or video clips — to a provider who reviews it and responds at a later time, without a real-time visit. This is commonly used for dermatology (skin photos), ophthalmology, and after-hours symptom triage. It is more flexible and often less expensive than synchronous video visits."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I see an out-of-state provider via telehealth?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Generally, a provider must be licensed in the state where the patient is physically located at the time of the visit — not where the provider practices. During the COVID-19 public health emergency, many states waived this requirement temporarily. As of 2026, most states have reverted to their standard licensure requirements, though some have enacted permanent telehealth-friendly licensure compacts (IMLC, NLC) that allow providers to treat patients across member states."
+      }
+    }
+  ]
+};
+---
+
+<Base title={title} description={description}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Guides', href: '/guides' }, { name: 'Telehealth Guide' }]}
+>
+  <div class="max-w-3xl mx-auto px-4 py-8">
+
+    <header class="mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">Telehealth Guide: Virtual Care Options in 2026</h1>
+      <p class="text-lg text-gray-500 dark:text-gray-400 mt-2">How to use virtual care effectively, what insurance covers, and how to find providers who offer telehealth.</p>
+    </header>
+
+    <div class="bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-xl p-6 mb-10">
+      <div class="text-sm font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 mb-2">Key Takeaway</div>
+      <p class="text-gray-700 dark:text-gray-300">Telehealth has become a standard care delivery option for millions of Americans. It works best for acute minor illnesses, mental health, chronic disease monitoring, and follow-up visits. Most private insurance plans now cover in-network telehealth at similar cost-sharing to in-person visits, and Medicare coverage remains broadly extended. Physical limitations mean telehealth cannot replace all in-person care, but it effectively handles a significant portion of routine medical needs.</p>
+    </div>
+
+    <div class="prose prose-gray dark:prose-invert max-w-none">
+
+      <h2>What Is Telehealth?</h2>
+      <p>
+        Telehealth is the delivery of healthcare services using telecommunications technology — video conferencing, phone calls, secure messaging, or digital health tools — when the patient and provider are not in the same physical location. It encompasses a broad range of services from synchronous video visits that replicate an office encounter to asynchronous consultations where a provider reviews submitted information and responds later.
+      </p>
+      <p>
+        The terms "telehealth" and "telemedicine" are often used interchangeably. Technically, telemedicine refers to clinical services delivered remotely, while telehealth has a broader meaning that includes non-clinical services like provider education and health administration. In common usage, both terms typically refer to patient care delivered virtually.
+      </p>
+      <p>
+        Telehealth expanded dramatically during the COVID-19 pandemic, when CMS and private insurers suspended many pre-existing restrictions. Usage has declined from pandemic peaks but remains significantly higher than pre-2020 levels, and many insurance coverage expansions have been made permanent.
+      </p>
+
+      <h2>Types of Telehealth</h2>
+      <p>
+        <strong>Synchronous video visits</strong> are real-time video appointments between patient and provider using a computer, tablet, or smartphone. These most closely replicate in-person office visits — you see and speak with your provider in real time, can show them visible symptoms, and receive immediate responses. Most telehealth coverage policies apply specifically to video visits. Platforms used include the practice's patient portal (like MyChart), Zoom for Healthcare, Teladoc, Amwell, and others.
+      </p>
+      <p>
+        <strong>Telephone-only visits</strong> (audio-only telehealth) are available when video capability is not accessible. Coverage for phone-only visits has been more variable — during the COVID-19 public health emergency, CMS and many insurers covered audio-only visits at the same rates as video visits. Coverage rules for audio-only visits have tightened post-PHE, though many plans still cover them at reduced rates. This option is particularly important for patients without reliable internet access or video-capable devices.
+      </p>
+      <p>
+        <strong>Asynchronous telehealth (store-and-forward)</strong> involves submitting clinical information — photographs, questionnaires, device readings, or video clips — to a provider who reviews and responds outside of a real-time encounter. This approach is widely used in dermatology (submitting skin photos for review), ophthalmology (retinal imaging), and radiology. It is time-flexible for both patient and provider and can be less expensive than synchronous visits.
+      </p>
+      <p>
+        <strong>Remote Patient Monitoring (RPM)</strong> uses connected devices — blood pressure cuffs, glucometers, pulse oximeters, cardiac monitors, weight scales — to transmit patient physiological data to a provider on an ongoing basis. RPM is particularly valuable for managing chronic conditions like hypertension, heart failure, and diabetes, allowing providers to detect deterioration before it becomes an emergency. Medicare has established specific billing codes for RPM services.
+      </p>
+
+      <h2>What Conditions Are Appropriate for Telehealth</h2>
+      <p>
+        Telehealth is effective for conditions where visual assessment, history-taking, and non-physical interventions are sufficient for diagnosis and management. It is generally not appropriate where physical examination findings — palpation, auscultation, hands-on assessment — are essential to diagnosis or treatment decisions.
+      </p>
+      <p>
+        <strong>Well-suited for telehealth:</strong>
+      </p>
+      <ul>
+        <li>Acute minor illness: upper respiratory infections, sinus infections, UTIs (with symptom history), mild ear infections, conjunctivitis, cold sores</li>
+        <li>Skin conditions with visible presentation: rashes, acne, eczema flares (photo-based asynchronous works well here)</li>
+        <li>Mental health therapy: psychotherapy, cognitive behavioral therapy, and counseling sessions are highly effective via video</li>
+        <li>Psychiatric medication management: follow-up visits for stable patients on psychiatric medications</li>
+        <li>Chronic disease management: monitoring stable hypertension, diabetes, asthma, hypothyroidism, and similar conditions with home device data</li>
+        <li>Post-procedure follow-up: wound checks where the wound is accessible and visible, medication adjustments</li>
+        <li>Prescription renewals for stable, established patients</li>
+        <li>Health coaching and preventive counseling</li>
+      </ul>
+      <p>
+        <strong>Generally requires in-person care:</strong>
+      </p>
+      <ul>
+        <li>New onset of complex or unexplained symptoms requiring full physical examination</li>
+        <li>Conditions requiring lab work, imaging, or diagnostic procedures</li>
+        <li>Procedures (injections, biopsies, wound repair, joint manipulation)</li>
+        <li>Any emergency or potentially serious acute condition — seek in-person emergency care</li>
+        <li>Pediatric well-child visits requiring growth measurements, developmental assessment, and immunizations</li>
+      </ul>
+
+      <h2>Insurance Coverage for Telehealth</h2>
+      <p>
+        Coverage for telehealth services has expanded significantly and is now standard in most U.S. health plans, though the specific rules vary considerably.
+      </p>
+      <p>
+        <strong>Private insurance.</strong> Most employer-sponsored and marketplace plans cover in-network video telehealth visits. Many plans have equalized cost-sharing between in-person and telehealth visits. Some plans offer $0 copay telehealth through virtual-only platforms (like Teladoc or MDLive), though these may be for a narrower set of services. Check your plan's summary of benefits for specific telehealth cost-sharing.
+      </p>
+      <p>
+        <strong>Medicare.</strong> Medicare significantly expanded telehealth coverage during the COVID-19 public health emergency, and many flexibilities have been extended through 2025 and into 2026. Medicare currently covers most in-person services when delivered via two-way audio/video technology, and in some cases audio-only, for beneficiaries in most settings. The originating site restrictions (which previously limited telehealth to rural areas) remain relaxed. Check the CMS telehealth resources for current Medicare telehealth coverage.
+      </p>
+      <p>
+        <strong>Medicaid.</strong> Medicaid telehealth coverage is set by each state and varies considerably. Most states cover some telehealth services, but the scope, eligible provider types, and reimbursement rates differ. Contact your state Medicaid program or managed care plan directly for current coverage rules.
+      </p>
+
+      <h2>State Licensure and Cross-State Telehealth</h2>
+      <p>
+        A provider delivering telehealth must hold an active license in the state where the patient is physically located during the visit — not where the provider is located. This has historically limited patients' ability to access out-of-state specialists or providers in underserved areas.
+      </p>
+      <p>
+        Several licensure compacts have been established to allow licensed providers to see patients across member states more easily. The Interstate Medical Licensure Compact (IMLC) streamlines the process for allopathic and osteopathic physicians to obtain licenses in multiple member states. The Nurse Licensure Compact (NLC) allows RNs and LPNs to practice in multiple member states on a single license.
+      </p>
+      <p>
+        As of 2026, some states have enacted permanent telehealth-specific registration pathways that allow out-of-state providers to treat patients remotely without a full license in the patient's state. The landscape continues to evolve; verify current requirements if you plan to use a provider located in a different state.
+      </p>
+
+      <h2>How to Find Telehealth-Enabled Providers</h2>
+      <p>
+        The easiest approach for established patients is to check whether your existing providers offer telehealth through their patient portal. Most large health systems now offer video visits for both primary care and specialists through the same portal (MyChart, Epic, Healow, and others).
+      </p>
+      <p>
+        For new patients or when your existing provider does not offer telehealth, options include:
+      </p>
+      <ul>
+        <li><strong>Your insurer's telehealth benefit:</strong> Many insurers offer a telehealth platform (Teladoc, MDLive, Doctor on Demand, Amwell) included with your plan. Log into your insurance portal to find it.</li>
+        <li><strong>Specialty telehealth platforms:</strong> For mental health, platforms like Talkspace, BetterHelp, and Headspace Care offer therapy; Cerebral, Done, and similar services offer psychiatric medication management (with varying controversy about prescribing practices).</li>
+        <li><strong>Direct-to-consumer telehealth:</strong> Services like Amazon Clinic, Hims/Hers, Ro, and similar platforms offer telehealth for specific conditions without insurance, often at flat cash prices.</li>
+      </ul>
+      <p>
+        When finding a new telehealth provider, verify their credentials through the <a href="/search">PlainDoctor search</a> or the <a href="https://npiregistry.cms.hhs.gov/" target="_blank" rel="noopener noreferrer">NPPES NPI Registry</a> to confirm they hold an active NPI and are registered in the specialty you need. Browse our <a href="/states/">state directory</a> to find providers practicing in your state.
+      </p>
+
+      <h2>Frequently Asked Questions</h2>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">Does insurance cover telehealth visits?</summary>
+        <p>Most private insurance plans now cover telehealth visits, particularly video visits with in-network providers. Coverage expanded significantly during the COVID-19 public health emergency and many insurers have maintained broad telehealth benefits. Medicare covers telehealth for most beneficiaries through at least 2025 under extended flexibilities. Medicaid coverage varies by state. Always check your specific plan to confirm which telehealth services are covered and at what cost-sharing level.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">What conditions can be treated via telehealth?</summary>
+        <p>Telehealth is well-suited for: acute conditions like respiratory infections, UTIs, sinus infections, and mild rashes; mental health therapy and psychiatric medication management; chronic disease management for stable conditions like hypertension, diabetes, and asthma; follow-up visits after in-person care; prescription renewals; preventive care discussions and health coaching. It is generally not appropriate for conditions requiring physical examination, imaging, lab work that cannot be done remotely, or emergencies.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">What is asynchronous telehealth?</summary>
+        <p>Asynchronous telehealth (also called store-and-forward) involves submitting medical information — photos, symptom questionnaires, lab results, or video clips — to a provider who reviews it and responds at a later time, without a real-time visit. This is commonly used for dermatology (skin photos), ophthalmology, and after-hours symptom triage. It is more flexible and often less expensive than synchronous video visits.</p>
+      </details>
+
+      <details class="group">
+        <summary class="cursor-pointer font-semibold text-gray-900 dark:text-gray-100">Can I see an out-of-state provider via telehealth?</summary>
+        <p>Generally, a provider must be licensed in the state where the patient is physically located at the time of the visit — not where the provider practices. During the COVID-19 public health emergency, many states waived this requirement temporarily. As of 2026, most states have reverted to their standard licensure requirements, though some have enacted permanent telehealth-friendly licensure compacts (IMLC, NLC) that allow providers to treat patients across member states.</p>
+      </details>
+    </div>
+
+    <div class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        <strong>Sources:</strong> Centers for Medicare &amp; Medicaid Services, <a href="https://www.cms.gov/Medicare/Medicare-General-Information/Telehealth" class="text-teal-600 dark:text-teal-400 hover:underline" target="_blank" rel="noopener noreferrer">Medicare Telehealth</a>; American Telemedicine Association; Interstate Medical Licensure Compact Commission, <a href="https://www.imlcc.org/" class="text-teal-600 dark:text-teal-400 hover:underline" target="_blank" rel="noopener noreferrer">imlcc.org</a>; KFF, Telehealth Policy in the U.S.
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        <strong>Last updated:</strong> February 2026
+      </p>
+    </div>
+  </div>
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+</Base>
