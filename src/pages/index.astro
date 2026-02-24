@@ -106,6 +106,35 @@ const datasetSchema = {
     </div>
   </section>
 
+  <section class="bg-[var(--color-surface)] border-t border-[var(--color-border)]">
+    <div class="max-w-6xl mx-auto px-4 py-12 md:py-16">
+      <h2 class="text-2xl font-bold text-[var(--color-text)] mb-3">Learn & Explore</h2>
+      <p class="text-[var(--color-text-secondary)] mb-8 max-w-2xl">
+        Go beyond the directory with our guides on finding the right doctor, understanding specialties, and navigating the US healthcare system.
+      </p>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <a href="/guides/how-to-find-a-doctor/" class="block p-5 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl hover:border-[var(--color-primary)] transition-colors">
+          <div class="text-xs font-medium text-[var(--color-primary)] uppercase tracking-wide mb-2">Finding Care</div>
+          <h3 class="font-semibold text-[var(--color-text)] mb-1">How to Find a Doctor</h3>
+          <p class="text-sm text-[var(--color-text-secondary)]">A step-by-step guide to finding a primary care physician, verifying credentials, and checking insurance coverage.</p>
+        </a>
+        <a href="/guides/medical-specialties-explained/" class="block p-5 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl hover:border-[var(--color-primary)] transition-colors">
+          <div class="text-xs font-medium text-[var(--color-primary)] uppercase tracking-wide mb-2">Specialties</div>
+          <h3 class="font-semibold text-[var(--color-text)] mb-1">Medical Specialties Explained</h3>
+          <p class="text-sm text-[var(--color-text-secondary)]">Understand the difference between internists, hospitalists, and specialists so you can find the right type of provider.</p>
+        </a>
+        <a href="/guides/in-network-vs-out-of-network/" class="block p-5 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl hover:border-[var(--color-primary)] transition-colors">
+          <div class="text-xs font-medium text-[var(--color-primary)] uppercase tracking-wide mb-2">Insurance</div>
+          <h3 class="font-semibold text-[var(--color-text)] mb-1">In-Network vs. Out-of-Network Providers</h3>
+          <p class="text-sm text-[var(--color-text-secondary)]">What the difference means for your bills, and how to verify whether a provider accepts your insurance plan.</p>
+        </a>
+      </div>
+      <div class="mt-6 text-center">
+        <a href="/guides/" class="text-[var(--color-primary)] hover:underline font-medium">View all guides &rarr;</a>
+      </div>
+    </div>
+  </section>
+
   <script type="application/ld+json" set:html={JSON.stringify(datasetSchema)} />
   <script type="application/ld+json" set:html={JSON.stringify({
     '@context': 'https://schema.org',
