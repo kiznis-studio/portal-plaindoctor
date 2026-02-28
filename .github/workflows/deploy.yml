@@ -39,11 +39,17 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.TITAN_SSH_KEY }}
           TITAN_HOST: ${{ secrets.TITAN_HOST }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/titan_key
           chmod 600 ~/.ssh/titan_key
           ssh-keyscan -H "$TITAN_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          ssh -i ~/.ssh/titan_key "root@${TITAN_HOST}" \
-            'cd /opt/portals && docker pull ghcr.io/kiznis-studio/portal-plaindoctor:latest && docker compose up -d portal-plaindoctor && echo "PlainDoctor deployed at $(date)"'
+          echo "$GHCR_TOKEN" | ssh -i ~/.ssh/titan_key "root@${TITAN_HOST}" \
+            'docker login ghcr.io -u github-actions --password-stdin && \
+             cd /opt/portals && \
+             docker pull ghcr.io/kiznis-studio/portal-plaindoctor:latest && \
+             docker compose up -d portal-plaindoctor && \
+             docker logout ghcr.io && \
+             echo "PlainDoctor deployed at $(date)"'
