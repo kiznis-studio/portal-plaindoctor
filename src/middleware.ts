@@ -33,9 +33,21 @@ function cleanupRateLimits() {
   }
 }
 
+// Determine edge cache TTL based on URL path
+function getEdgeTtl(path: string): number {
+  // Provider detail pages — very stable, cache 24h at edge
+  if (path.startsWith('/provider/')) return 86400;
+  // Specialty and state listing pages — cache 6h
+  if (path.startsWith('/specialty/') || path.startsWith('/state/') || path.startsWith('/compare/')) return 21600;
+  // All other HTML pages — cache 1h
+  return 3600;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
-  // Only rate-limit API endpoints (SSR routes, never prerendered)
-  if (context.url.pathname.startsWith('/api/')) {
+  const path = context.url.pathname;
+
+  // Rate-limit API endpoints only
+  if (path.startsWith('/api/')) {
     let ip = 'unknown';
     try { ip = context.clientAddress || context.request.headers.get('cf-connecting-ip') || 'unknown'; } catch { ip = context.request.headers.get('cf-connecting-ip') || 'unknown'; }
 
@@ -51,36 +63,38 @@ export const onRequest = defineMiddleware(async (context, next) => {
         },
       });
     }
+
+    return next();
+  }
+
+  // --- Cloudflare Cache API for SSR pages ---
+  // Workers bypass the CDN cache by default. We must explicitly use the Cache API
+  // to store/retrieve responses at Cloudflare's edge, preventing D1 reads from crawlers.
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const cacheKey = new Request(context.url.toString(), { method: 'GET' });
+
+  if (cache && context.request.method === 'GET') {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
   }
 
   const response = await next();
 
-  // Add edge caching to SSR pages — data updates quarterly at most
-  // s-maxage controls Cloudflare edge cache; max-age controls browser cache
-  const path = context.url.pathname;
-  if (!path.startsWith('/api/') && response.status === 200) {
+  // Only cache successful HTML/XML responses
+  if (cache && response.status === 200 && context.request.method === 'GET') {
     const ct = response.headers.get('content-type') || '';
-    if (ct.includes('text/html')) {
-      // Provider detail pages — very stable, cache 24h at edge
-      if (path.startsWith('/provider/')) {
-        response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=86400');
+    if (ct.includes('text/html') || ct.includes('xml')) {
+      const ttl = ct.includes('xml') ? 86400 : getEdgeTtl(path);
+      const cacheResponse = new Response(response.body, response);
+      cacheResponse.headers.set('Cache-Control', `public, max-age=300, s-maxage=${ttl}`);
+      // waitUntil keeps the Worker alive to complete the cache.put() in the background
+      const waitUntil = (context.locals as any).runtime?.waitUntil;
+      if (waitUntil) {
+        waitUntil(cache.put(cacheKey, cacheResponse.clone()));
+      } else {
+        await cache.put(cacheKey, cacheResponse.clone());
       }
-      // Specialty listing pages — stable data, cache 6h at edge
-      else if (path.startsWith('/specialty/')) {
-        response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=21600');
-      }
-      // State pages, compare pages — cache 6h at edge
-      else if (path.startsWith('/state/') || path.startsWith('/compare/')) {
-        response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=21600');
-      }
-      // All other HTML pages — cache 1h at edge
-      else {
-        response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=3600');
-      }
-    }
-    // Sitemaps — cache 24h
-    else if (ct.includes('xml')) {
-      response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+      return cacheResponse;
     }
   }
 
