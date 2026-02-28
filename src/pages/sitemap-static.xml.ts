@@ -1,15 +1,22 @@
 import type { APIRoute } from 'astro';
 
+const BASE = 'https://plaindoctor.com';
+
 export const GET: APIRoute = async () => {
-  const base = 'https://plaindoctor.com';
-  const pages = ['/', '/specialty', '/state', '/search', '/about', '/privacy', '/terms'];
+  const pages = [
+    '/', '/specialty', '/state', '/search', '/compare',
+    '/guides', '/guides/how-to-find-a-doctor', '/guides/medical-specialties-explained',
+    '/guides/in-network-vs-out-of-network', '/guides/telehealth-guide',
+    '/guides/credential-verification-guide',
+    '/about', '/privacy', '/terms',
+  ];
 
-  const urls = pages.map(p => `  <url><loc>${base}${p}</loc><changefreq>weekly</changefreq><priority>${p === '/' ? '1.0' : '0.7'}</priority></url>`).join('\n');
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls}
-</urlset>`;
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...pages.map(p => `  <url><loc>${BASE}${p}</loc><changefreq>weekly</changefreq></url>`),
+    '</urlset>',
+  ].join('\n');
 
   return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });
 };
