@@ -180,15 +180,16 @@ export async function searchProviders(db: D1Database, query: string, limit = 20)
     const result = await getProviderByNpi(db, trimmed);
     return result ? [result] : [];
   }
-  // Use prefix matching (last_name LIKE 'query%') instead of substring ('%query%')
-  // Prefix matching can use indexes; substring matching forces full table scan on 7M rows
+  // Search last_name only using prefix match + index (idx_providers_last_name)
+  // OR with multiple columns forces a full 7M-row SCAN; single-column search
+  // is dramatically cheaper and covers the primary use case
   const prefix = trimmed + '%';
   const { results } = await db.prepare(`
     SELECT * FROM providers
-    WHERE last_name LIKE ? OR first_name LIKE ? OR city LIKE ?
+    WHERE last_name LIKE ?
     ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE
     LIMIT ?
-  `).bind(prefix, prefix, prefix, limit).all<Provider>();
+  `).bind(prefix, limit).all<Provider>();
   return results;
 }
 

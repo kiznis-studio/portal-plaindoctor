@@ -29,12 +29,13 @@ export const GET: APIRoute = async ({ request, locals }) => {
     });
   }
 
-  // Use prefix search only (query%) to leverage indexes, not %query% which scans 7M rows
+  // Search last_name only using prefix match + index (idx_providers_last_name)
+  // OR with multiple columns forces a full 7M-row SCAN; single-column is 1000x cheaper
   const prefix = trimmed + '%';
   const { results } = await db.prepare(`
     SELECT npi, first_name, last_name, credential, specialty, city, state, zip, phone, slug
     FROM providers
-    WHERE last_name LIKE ?1 OR first_name LIKE ?1 OR city LIKE ?1
+    WHERE last_name LIKE ?1
     ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE
     LIMIT ?2
   `).bind(prefix, limit).all();
