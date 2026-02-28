@@ -1,6 +1,8 @@
 // PlainDoctor D1 query library
 // All functions accept D1Database as first param — NEVER at module scope
 
+import precomputed from '../data/precomputed.json';
+
 // --- Interfaces ---
 
 export interface Provider {
@@ -130,20 +132,16 @@ export async function getProviderCountBySpecialtyAndState(
 
 // --- Specialties ---
 
-export async function getAllSpecialties(db: D1Database): Promise<Specialty[]> {
-  const { results } = await db.prepare('SELECT * FROM specialties ORDER BY provider_count DESC').all<Specialty>();
-  return results;
+export async function getAllSpecialties(_db: D1Database): Promise<Specialty[]> {
+  return precomputed.specialties as Specialty[];
 }
 
 export async function getSpecialtyBySlug(db: D1Database, slug: string): Promise<Specialty | null> {
   return db.prepare('SELECT * FROM specialties WHERE slug = ?').bind(slug).first<Specialty>();
 }
 
-export async function getTopSpecialties(db: D1Database, limit = 20): Promise<Specialty[]> {
-  const { results } = await db.prepare(
-    'SELECT * FROM specialties ORDER BY provider_count DESC LIMIT ?'
-  ).bind(limit).all<Specialty>();
-  return results;
+export async function getTopSpecialties(_db: D1Database, limit = 20): Promise<Specialty[]> {
+  return (precomputed.specialties as Specialty[]).slice(0, limit);
 }
 
 export async function getSpecialtyStates(db: D1Database, specialtyCode: string): Promise<SpecialtyState[]> {
@@ -155,9 +153,8 @@ export async function getSpecialtyStates(db: D1Database, specialtyCode: string):
 
 // --- States ---
 
-export async function getAllStates(db: D1Database): Promise<StateInfo[]> {
-  const { results } = await db.prepare('SELECT * FROM states ORDER BY name COLLATE NOCASE').all<StateInfo>();
-  return results;
+export async function getAllStates(_db: D1Database): Promise<StateInfo[]> {
+  return precomputed.states as StateInfo[];
 }
 
 export async function getStateBySlug(db: D1Database, slug: string): Promise<StateInfo | null> {
@@ -218,31 +215,12 @@ export async function getSpecialtyStateDistribution(
 
 // --- Stats (pre-computed to avoid full table scans on every page load) ---
 
-export async function getNationalStats(db: D1Database) {
-  try {
-    const { results } = await db.prepare(
-      "SELECT key, value FROM _stats WHERE key IN ('provider_count', 'specialty_count', 'state_count', 'city_count')"
-    ).all<{ key: string; value: string }>();
-    if (results.length > 0) {
-      const map = Object.fromEntries(results.map(r => [r.key, parseInt(r.value)]));
-      return {
-        provider_count: map.provider_count ?? 0,
-        specialty_count: map.specialty_count ?? 0,
-        state_count: map.state_count ?? 0,
-        city_count: map.city_count ?? 0,
-      };
-    }
-  } catch { /* _stats table may not exist yet — fall through */ }
-  // Fallback: use pre-existing summary tables (NOT full table scans)
-  const specialties = await db.prepare('SELECT COUNT(*) as cnt FROM specialties').first<{ cnt: number }>();
-  const states = await db.prepare('SELECT COUNT(*) as cnt FROM states').first<{ cnt: number }>();
-  const cities = await db.prepare('SELECT COUNT(*) as cnt FROM cities').first<{ cnt: number }>();
-  // Approximate provider count from MAX(rowid) instead of COUNT(*)
-  const providers = await db.prepare('SELECT MAX(rowid) as cnt FROM providers').first<{ cnt: number }>();
+export async function getNationalStats(_db: D1Database) {
+  const s = precomputed.nationalStats as Record<string, number>;
   return {
-    provider_count: providers?.cnt ?? 0,
-    specialty_count: specialties?.cnt ?? 0,
-    state_count: states?.cnt ?? 0,
-    city_count: cities?.cnt ?? 0,
+    provider_count: s.provider_count ?? 0,
+    specialty_count: s.specialty_count ?? 0,
+    state_count: s.state_count ?? 0,
+    city_count: s.city_count ?? 0,
   };
 }
