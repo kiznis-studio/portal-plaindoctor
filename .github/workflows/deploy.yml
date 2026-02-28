@@ -1,25 +1,49 @@
-name: Deploy to Cloudflare Pages
+name: Build & Deploy to Titan
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: kiznis-studio/portal-plaindoctor
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - run: cp public/_redirects dist/ 2>/dev/null || true
-      - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy dist/ --project-name=portal-plaindoctor
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/kiznis-studio/portal-plaindoctor:latest
+            ghcr.io/kiznis-studio/portal-plaindoctor:${{ github.sha }}
+
+      - name: Deploy to Titan
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SSH_KEY: ${{ secrets.TITAN_SSH_KEY }}
+          TITAN_HOST: ${{ secrets.TITAN_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/titan_key
+          chmod 600 ~/.ssh/titan_key
+          ssh-keyscan -H "$TITAN_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          ssh -i ~/.ssh/titan_key "root@${TITAN_HOST}" \
+            'cd /opt/portals && docker pull ghcr.io/kiznis-studio/portal-plaindoctor:latest && docker compose up -d portal-plaindoctor && echo "PlainDoctor deployed at $(date)"'
