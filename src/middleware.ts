@@ -53,5 +53,36 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  return next();
+  const response = await next();
+
+  // Add edge caching to SSR pages — data updates quarterly at most
+  // s-maxage controls Cloudflare edge cache; max-age controls browser cache
+  const path = context.url.pathname;
+  if (!path.startsWith('/api/') && response.status === 200) {
+    const ct = response.headers.get('content-type') || '';
+    if (ct.includes('text/html')) {
+      // Provider detail pages — very stable, cache 24h at edge
+      if (path.startsWith('/provider/')) {
+        response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=86400');
+      }
+      // Specialty listing pages — stable data, cache 6h at edge
+      else if (path.startsWith('/specialty/')) {
+        response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=21600');
+      }
+      // State pages, compare pages — cache 6h at edge
+      else if (path.startsWith('/state/') || path.startsWith('/compare/')) {
+        response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=21600');
+      }
+      // All other HTML pages — cache 1h at edge
+      else {
+        response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=3600');
+      }
+    }
+    // Sitemaps — cache 24h
+    else if (ct.includes('xml')) {
+      response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+    }
+  }
+
+  return response;
 });
