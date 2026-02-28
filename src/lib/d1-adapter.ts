@@ -34,8 +34,7 @@ function normalizeParams(sql: string): string {
 
 export function createD1Adapter(dbPath: string): D1Database {
   const db = new Database(dbPath, { readonly: true, fileMustExist: true });
-  // Performance: WAL mode + mmap for read-heavy workloads
-  db.pragma('journal_mode = WAL');
+  // Performance: mmap for read-heavy workloads (WAL skipped — readonly mount)
   db.pragma('mmap_size = 268435456'); // 256MB mmap
 
   return {
