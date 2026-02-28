@@ -426,6 +426,24 @@ async function main() {
     db.prepare(idx).run();
   }
 
+  // Create _stats table with pre-computed aggregate values
+  // This avoids expensive COUNT(*) on the 7M-row providers table at runtime
+  console.log('\nPopulating _stats table...');
+  db.prepare('CREATE TABLE IF NOT EXISTS _stats (key TEXT PRIMARY KEY, value TEXT)').run();
+  const statsQueries = [
+    ["provider_count", "SELECT COUNT(*) FROM providers"],
+    ["specialty_count", "SELECT COUNT(*) FROM specialties"],
+    ["state_count", "SELECT COUNT(*) FROM states"],
+    ["city_count", "SELECT COUNT(*) FROM cities"],
+  ];
+  const insertStat = db.prepare('INSERT OR REPLACE INTO _stats (key, value) VALUES (?, ?)');
+  for (const [key, query] of statsQueries) {
+    const row = db.prepare(query).get();
+    const val = Object.values(row)[0];
+    insertStat.run(key, String(val));
+    console.log(`  ${key} = ${val}`);
+  }
+
   db.close();
 
   const stats = statSync(DB_PATH);

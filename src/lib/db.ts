@@ -71,6 +71,23 @@ export function getStateName(abbr: string): string {
   return STATE_NAMES[abbr.toUpperCase()] || abbr;
 }
 
+// --- State Populations (2023 Census estimates, for per-capita calculations) ---
+
+export const STATE_POPULATIONS: Record<string, number> = {
+  AL: 5108468, AK: 733406, AZ: 7431344, AR: 3067732, CA: 38965193,
+  CO: 5877610, CT: 3617176, DE: 1031890, FL: 22610726, GA: 11029227,
+  HI: 1435138, ID: 1964726, IL: 12549689, IN: 6862199, IA: 3207004,
+  KS: 2940546, KY: 4526154, LA: 4573749, ME: 1395722, MD: 6180253,
+  MA: 7001399, MI: 10037261, MN: 5737915, MS: 2939690, MO: 6196156,
+  MT: 1132812, NE: 1978379, NV: 3194176, NH: 1402054, NJ: 9290841,
+  NM: 2114371, NY: 19571216, NC: 10835491, ND: 783926, OH: 11785935,
+  OK: 4053824, OR: 4233358, PA: 12961683, RI: 1095962, SC: 5373555,
+  SD: 919318, TN: 7126489, TX: 30503301, UT: 3417734, VT: 647464,
+  VA: 8642274, WA: 7812880, WV: 1770071, WI: 5910955, WY: 584057,
+  DC: 678972, PR: 3205691, GU: 153836, VI: 87146,
+  AS: 43914, MP: 47329,
+};
+
 // --- Helpers ---
 
 export function formatNumber(num: number | null): string {
@@ -160,34 +177,72 @@ export async function getCitiesByState(db: D1Database, state: string, limit = 50
 
 export async function searchProviders(db: D1Database, query: string, limit = 20): Promise<Provider[]> {
   const trimmed = query.trim();
+  if (!trimmed) return [];
   // Check if query is an NPI number (10 digits)
   if (/^\d{10}$/.test(trimmed)) {
     const result = await getProviderByNpi(db, trimmed);
     return result ? [result] : [];
   }
-  const like = '%' + trimmed + '%';
+  // Use prefix matching (last_name LIKE 'query%') instead of substring ('%query%')
+  // Prefix matching can use indexes; substring matching forces full table scan on 7M rows
+  const prefix = trimmed + '%';
   const { results } = await db.prepare(`
     SELECT * FROM providers
-    WHERE last_name LIKE ? OR first_name LIKE ? OR specialty LIKE ? OR city LIKE ?
+    WHERE last_name LIKE ? OR first_name LIKE ? OR city LIKE ?
     ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE
     LIMIT ?
-  `).bind(like, like, like, like, limit).all<Provider>();
+  `).bind(prefix, prefix, prefix, limit).all<Provider>();
   return results;
 }
 
-// --- Stats ---
+// --- Comparison ---
+
+export interface SpecialtyStateRow {
+  specialty_code: string;
+  state: string;
+  provider_count: number;
+}
+
+export async function getSpecialtyStateDistribution(
+  db: D1Database, specialtyCode: string
+): Promise<Map<string, number>> {
+  const { results } = await db.prepare(
+    'SELECT state, provider_count FROM specialty_state WHERE specialty_code = ? ORDER BY provider_count DESC'
+  ).bind(specialtyCode).all<{ state: string; provider_count: number }>();
+  const map = new Map<string, number>();
+  for (const row of results) {
+    map.set(row.state, row.provider_count);
+  }
+  return map;
+}
+
+// --- Stats (pre-computed to avoid full table scans on every page load) ---
 
 export async function getNationalStats(db: D1Database) {
-  return db.prepare(`
-    SELECT
-      (SELECT COUNT(*) FROM providers) as provider_count,
-      (SELECT COUNT(*) FROM specialties) as specialty_count,
-      (SELECT COUNT(*) FROM states) as state_count,
-      (SELECT COUNT(*) FROM cities) as city_count
-  `).first<{
-    provider_count: number;
-    specialty_count: number;
-    state_count: number;
-    city_count: number;
-  }>();
+  try {
+    const { results } = await db.prepare(
+      "SELECT key, value FROM _stats WHERE key IN ('provider_count', 'specialty_count', 'state_count', 'city_count')"
+    ).all<{ key: string; value: string }>();
+    if (results.length > 0) {
+      const map = Object.fromEntries(results.map(r => [r.key, parseInt(r.value)]));
+      return {
+        provider_count: map.provider_count ?? 0,
+        specialty_count: map.specialty_count ?? 0,
+        state_count: map.state_count ?? 0,
+        city_count: map.city_count ?? 0,
+      };
+    }
+  } catch { /* _stats table may not exist yet — fall through */ }
+  // Fallback: use pre-existing summary tables (NOT full table scans)
+  const specialties = await db.prepare('SELECT COUNT(*) as cnt FROM specialties').first<{ cnt: number }>();
+  const states = await db.prepare('SELECT COUNT(*) as cnt FROM states').first<{ cnt: number }>();
+  const cities = await db.prepare('SELECT COUNT(*) as cnt FROM cities').first<{ cnt: number }>();
+  // Approximate provider count from MAX(rowid) instead of COUNT(*)
+  const providers = await db.prepare('SELECT MAX(rowid) as cnt FROM providers').first<{ cnt: number }>();
+  return {
+    provider_count: providers?.cnt ?? 0,
+    specialty_count: specialties?.cnt ?? 0,
+    state_count: states?.cnt ?? 0,
+    city_count: cities?.cnt ?? 0,
+  };
 }

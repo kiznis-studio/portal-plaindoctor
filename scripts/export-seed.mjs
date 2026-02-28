@@ -9,8 +9,9 @@ import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 
 const DB_PATH = '/storage/plaindoctor/plaindoctor.db';
 const SEED_DIR = '/storage/plaindoctor/seed';
-const SMALL_CHUNK = 1000;
-const LARGE_CHUNK = 2000; // Larger chunks to reduce file count
+const SMALL_CHUNK = 500;
+const LARGE_CHUNK = 500;  // D1 has SQLITE_TOOBIG limit on single INSERT statements
+const INSERTS_PER_FILE = 4; // Multiple small INSERTs per file to reduce file count
 
 if (!existsSync(DB_PATH)) {
   console.error('Database not found:', DB_PATH);
@@ -50,12 +51,6 @@ function exportSmallTable(tableName, orderBy, filePrefix) {
     const pad = String(fileNum).padStart(4, '0');
 
     let sql = '';
-    if (i === 0) {
-      const createSql = getCreateTable(tableName);
-      if (createSql) {
-        sql += `DROP TABLE IF EXISTS ${tableName};\n${createSql};\n\n`;
-      }
-    }
 
     const values = chunk.map(row => {
       return `(${columns.map(col => escapeSQL(row[col])).join(',')})`;
@@ -70,6 +65,7 @@ function exportSmallTable(tableName, orderBy, filePrefix) {
 }
 
 // For large tables — uses rowid-based cursor (O(1) per page, not O(n) like OFFSET)
+// Writes multiple small INSERTs per file to avoid D1 SQLITE_TOOBIG errors
 function exportLargeTable(tableName, filePrefix) {
   const firstRow = db.prepare(`SELECT * FROM ${tableName} LIMIT 1`).get();
   if (!firstRow) {
@@ -87,26 +83,26 @@ function exportLargeTable(tableName, filePrefix) {
   let fileNum = 0;
   let lastRowid = 0;
   let exported = 0;
+  let insertsInCurrentFile = 0;
+  let currentSql = '';
 
   while (exported < totalCount) {
     // Get chunk using rowid cursor
     const chunk = stmt.all(lastRowid, LARGE_CHUNK);
     if (chunk.length === 0) break;
 
-    fileNum++;
-    const pad = String(fileNum).padStart(5, '0');
-
-    let sql = '';
-    if (fileNum === 1 && createSql) {
-      sql += `DROP TABLE IF EXISTS ${tableName};\n${createSql};\n\n`;
+    // Start new file if needed
+    if (insertsInCurrentFile === 0) {
+      fileNum++;
+      currentSql = '';
     }
 
     const values = chunk.map(row => {
       return `(${columns.map(col => escapeSQL(row[col])).join(',')})`;
     }).join(',\n');
 
-    sql += `INSERT INTO ${tableName} (${columns.join(',')}) VALUES\n${values};\n`;
-    writeFileSync(`${SEED_DIR}/${filePrefix}_${pad}.sql`, sql);
+    currentSql += `INSERT INTO ${tableName} (${columns.join(',')}) VALUES\n${values};\n`;
+    insertsInCurrentFile++;
 
     // Get the last rowid from this chunk
     const lastRow = chunk[chunk.length - 1];
@@ -114,9 +110,24 @@ function exportLargeTable(tableName, filePrefix) {
     lastRowid = lastRowidRow?.rowid || lastRowid + LARGE_CHUNK;
 
     exported += chunk.length;
-    if (fileNum % 500 === 0) {
+
+    // Write file when we have enough INSERTs
+    if (insertsInCurrentFile >= INSERTS_PER_FILE || exported >= totalCount) {
+      const pad = String(fileNum).padStart(5, '0');
+      writeFileSync(`${SEED_DIR}/${filePrefix}_${pad}.sql`, currentSql);
+      insertsInCurrentFile = 0;
+      currentSql = '';
+    }
+
+    if (fileNum % 500 === 0 && insertsInCurrentFile === 0) {
       console.log(`    ${exported.toLocaleString()} / ${totalCount.toLocaleString()} exported...`);
     }
+  }
+
+  // Write any remaining SQL
+  if (insertsInCurrentFile > 0) {
+    const pad = String(fileNum).padStart(5, '0');
+    writeFileSync(`${SEED_DIR}/${filePrefix}_${pad}.sql`, currentSql);
   }
 
   console.log(`  ${tableName}: ${exported.toLocaleString()} rows → ${fileNum} files`);
@@ -127,14 +138,32 @@ console.log('Exporting PlainDoctor seed files...\n');
 
 let totalFiles = 0;
 
+// Schema file (create all tables)
+{
+  const tables = ['specialties', 'states', 'cities', 'specialty_state', 'providers', '_stats'];
+  let schemaSql = '';
+  for (const t of tables) {
+    const createSql = getCreateTable(t);
+    if (createSql) {
+      schemaSql += `DROP TABLE IF EXISTS ${t};\n${createSql};\n\n`;
+    }
+  }
+  writeFileSync(`${SEED_DIR}/00_schema.sql`, schemaSql);
+  totalFiles++;
+  console.log('  Schema file written');
+}
+
 // Small aggregation tables
 totalFiles += exportSmallTable('specialties', 'provider_count DESC', '01_specialties');
 totalFiles += exportSmallTable('states', 'name COLLATE NOCASE', '02_states');
 totalFiles += exportSmallTable('cities', 'provider_count DESC', '03_cities');
 totalFiles += exportSmallTable('specialty_state', 'provider_count DESC', '04_specialty_state');
 
+// Stats table (pre-computed aggregates)
+totalFiles += exportSmallTable('_stats', 'key', '05_stats');
+
 // Large providers table — rowid cursor
-totalFiles += exportLargeTable('providers', '05_providers');
+totalFiles += exportLargeTable('providers', '06_providers');
 
 // Create indices file
 const indices = [
