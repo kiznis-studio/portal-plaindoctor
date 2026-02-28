@@ -5,7 +5,14 @@ import { createD1Adapter } from './lib/d1-adapter';
 const DATABASE_PATH = process.env.DATABASE_PATH || '/data/portal.db';
 let db: ReturnType<typeof createD1Adapter> | null = null;
 function getDb() {
-  if (!db) db = createD1Adapter(DATABASE_PATH);
+  if (!db) {
+    try {
+      db = createD1Adapter(DATABASE_PATH);
+    } catch {
+      // DB not available during build — prerendered pages don't need it
+      return null as any;
+    }
+  }
   return db;
 }
 
