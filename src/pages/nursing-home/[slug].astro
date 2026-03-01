@@ -1,0 +1,254 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getNursingHomeBySlug, getStateName, renderStars } from '../../lib/db';
+
+const { slug } = Astro.params;
+const db = Astro.locals.runtime.env.DB;
+const nh = await getNursingHomeBySlug(db, slug!);
+
+if (!nh) {
+  Astro.response.status = 404;
+  return Astro.redirect('/404');
+}
+
+const stateName = getStateName(nh.state);
+const phone = nh.phone ? nh.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3') : null;
+
+function ratingLabel(r: number | null): string {
+  if (r == null) return 'Not rated';
+  if (r === 5) return 'Much above average';
+  if (r === 4) return 'Above average';
+  if (r === 3) return 'Average';
+  if (r === 2) return 'Below average';
+  return 'Much below average';
+}
+
+function ratingColor(r: number | null): string {
+  if (r == null) return 'text-[var(--color-text-secondary)]';
+  if (r >= 4) return 'text-emerald-500';
+  if (r >= 3) return 'text-amber-500';
+  return 'text-amber-600 dark:text-amber-400';
+}
+
+const title = `${nh.name} — Nursing Home Rating in ${nh.city || stateName}`;
+const description = `${nh.name} in ${nh.city}, ${nh.state}. CMS overall rating: ${nh.overall_rating ?? 'N/A'}/5 stars. ${nh.beds ?? 0} certified beds. Health inspection, staffing, and quality data.`;
+
+const faqItems = [
+  {
+    q: `What is ${nh.name}'s overall CMS rating?`,
+    a: nh.overall_rating != null
+      ? `${nh.name} has a ${nh.overall_rating}-star overall CMS rating (${ratingLabel(nh.overall_rating)}).`
+      : `${nh.name} does not currently have a CMS star rating.`
+  },
+  {
+    q: `How many beds does ${nh.name} have?`,
+    a: nh.beds ? `${nh.name} has ${nh.beds} Medicare-certified beds.` : `Bed count data is not available.`
+  },
+  {
+    q: 'What are CMS Five-Star ratings?',
+    a: 'CMS rates nursing homes on a 1-5 star scale based on health inspections, quality measures, and staffing. Five stars means much above average; one star means much below average.'
+  },
+];
+---
+
+<Base
+  title={title}
+  description={description}
+  breadcrumbs={[
+    { name: 'Home', href: '/' },
+    { name: 'Nursing Homes', href: '/nursing-homes' },
+    { name: stateName, href: `/nursing-homes/${nh.state.toLowerCase()}` },
+    { name: nh.name }
+  ]}
+>
+  <section class="max-w-4xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">{nh.name}</h1>
+    <p class="text-[var(--color-text-secondary)] mb-6">
+      {[nh.address, nh.city, nh.state, nh.zip].filter(Boolean).join(', ')}
+      {nh.county && <span> · {nh.county} County</span>}
+    </p>
+
+    <!-- Overall rating hero -->
+    {nh.overall_rating != null && (
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 mb-6 text-center">
+        <div class="text-sm text-[var(--color-text-secondary)] mb-1">CMS Overall Rating</div>
+        <div class={`text-5xl font-bold mb-1 ${ratingColor(nh.overall_rating)}`}>
+          {nh.overall_rating}<span class="text-2xl">/5</span>
+        </div>
+        <div class="text-amber-500 text-2xl mb-2">{renderStars(nh.overall_rating)}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">{ratingLabel(nh.overall_rating)}</div>
+      </div>
+    )}
+
+    <div class="grid sm:grid-cols-2 gap-4 mb-8">
+      <!-- Rating breakdown -->
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5">
+        <h2 class="font-semibold mb-4">Rating Breakdown</h2>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-sm">Health Inspection</span>
+            <div class="text-right">
+              <span class={`font-semibold ${ratingColor(nh.health_rating)}`}>
+                {nh.health_rating != null ? `${nh.health_rating}/5` : 'N/A'}
+              </span>
+              {nh.health_rating != null && (
+                <div class="text-amber-500 text-xs">{renderStars(nh.health_rating)}</div>
+              )}
+            </div>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm">Quality Measures</span>
+            <div class="text-right">
+              <span class={`font-semibold ${ratingColor(nh.qm_rating)}`}>
+                {nh.qm_rating != null ? `${nh.qm_rating}/5` : 'N/A'}
+              </span>
+              {nh.qm_rating != null && (
+                <div class="text-amber-500 text-xs">{renderStars(nh.qm_rating)}</div>
+              )}
+            </div>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm">Staffing</span>
+            <div class="text-right">
+              <span class={`font-semibold ${ratingColor(nh.staffing_rating)}`}>
+                {nh.staffing_rating != null ? `${nh.staffing_rating}/5` : 'N/A'}
+              </span>
+              {nh.staffing_rating != null && (
+                <div class="text-amber-500 text-xs">{renderStars(nh.staffing_rating)}</div>
+              )}
+            </div>
+          </div>
+          {nh.long_stay_qm != null && (
+            <div class="flex justify-between items-center text-[var(--color-text-secondary)]">
+              <span class="text-sm">Long-Stay QM</span>
+              <span class="text-sm">{nh.long_stay_qm}/5</span>
+            </div>
+          )}
+          {nh.short_stay_qm != null && (
+            <div class="flex justify-between items-center text-[var(--color-text-secondary)]">
+              <span class="text-sm">Short-Stay QM</span>
+              <span class="text-sm">{nh.short_stay_qm}/5</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- Facility details -->
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5">
+        <h2 class="font-semibold mb-4">Facility Details</h2>
+        <div class="space-y-3 text-sm">
+          {nh.beds != null && (
+            <div class="flex justify-between">
+              <span class="text-[var(--color-text-secondary)]">Certified Beds</span>
+              <span class="font-medium">{nh.beds}</span>
+            </div>
+          )}
+          {nh.avg_residents != null && (
+            <div class="flex justify-between">
+              <span class="text-[var(--color-text-secondary)]">Avg. Residents/Day</span>
+              <span class="font-medium">{nh.avg_residents.toFixed(0)}</span>
+            </div>
+          )}
+          {nh.ownership && (
+            <div class="flex justify-between">
+              <span class="text-[var(--color-text-secondary)]">Ownership</span>
+              <span class="font-medium text-right">{nh.ownership}</span>
+            </div>
+          )}
+          {nh.rn_hours != null && (
+            <div class="flex justify-between">
+              <span class="text-[var(--color-text-secondary)]">RN Hours/Resident/Day</span>
+              <span class="font-medium">{nh.rn_hours.toFixed(2)}</span>
+            </div>
+          )}
+          {phone && (
+            <div class="flex justify-between">
+              <span class="text-[var(--color-text-secondary)]">Phone</span>
+              <a href={`tel:${nh.phone}`} class="text-[var(--color-primary)] hover:underline">{phone}</a>
+            </div>
+          )}
+          <div class="flex justify-between">
+            <span class="text-[var(--color-text-secondary)]">CCN</span>
+            <span class="font-mono text-xs">{nh.ccn}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compliance & Safety -->
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 mb-8">
+      <h2 class="font-semibold mb-4">Compliance & Safety</h2>
+      <div class="grid sm:grid-cols-3 gap-4 text-center">
+        <div>
+          <div class="text-2xl font-bold">{nh.total_deficiencies ?? 0}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Health Deficiencies</div>
+        </div>
+        <div>
+          <div class="text-2xl font-bold">{nh.num_fines ?? 0}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Fines</div>
+          {nh.fine_amount != null && nh.fine_amount > 0 && (
+            <div class="text-xs text-[var(--color-text-secondary)]">
+              ${nh.fine_amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </div>
+          )}
+        </div>
+        <div>
+          <div class="text-2xl font-bold">{nh.num_penalties ?? 0}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Total Penalties</div>
+        </div>
+      </div>
+
+      {(nh.abuse_icon === 1 || nh.special_focus === 1) && (
+        <div class="mt-4 space-y-2">
+          {nh.abuse_icon === 1 && (
+            <div class="text-sm text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
+              ⚠ This facility has an abuse icon on its CMS record.
+            </div>
+          )}
+          {nh.special_focus === 1 && (
+            <div class="text-sm text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
+              ⚠ This facility has special focus status — it has a history of serious quality issues.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    <!-- FAQ -->
+    <div class="space-y-3 mb-8">
+      <h2 class="text-lg font-semibold">Frequently Asked Questions</h2>
+      {faqItems.map(item => (
+        <details class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+          <summary class="font-medium cursor-pointer">{item.q}</summary>
+          <p class="text-sm text-[var(--color-text-secondary)] mt-2">{item.a}</p>
+        </details>
+      ))}
+    </div>
+
+    <p class="text-xs text-[var(--color-text-secondary)]">
+      Source: CMS Provider Data Catalog — Nursing Home Provider Information (Feb 2026).
+      This is a directory of publicly available CMS data and is not medical advice.
+      Always visit facilities in person and consult healthcare professionals before making care decisions.
+    </p>
+  </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://plaindoctor.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Nursing Homes", "item": "https://plaindoctor.com/nursing-homes/" },
+      { "@type": "ListItem", "position": 3, "name": stateName, "item": `https://plaindoctor.com/nursing-homes/${nh.state.toLowerCase()}` },
+      { "@type": "ListItem", "position": 4, "name": nh.name, "item": `https://plaindoctor.com/nursing-home/${slug}` }
+    ]
+  })} />
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqItems.map(item => ({
+      "@type": "Question",
+      "name": item.q,
+      "acceptedAnswer": { "@type": "Answer", "text": item.a }
+    }))
+  })} />
+</Base>

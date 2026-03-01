@@ -1,0 +1,97 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getAllNursingHomeStates, getNursingHomeStats, getStateName, renderStars } from '../../lib/db';
+
+const db = Astro.locals.runtime.env.DB;
+const states = await getAllNursingHomeStates(db);
+const stats = await getNursingHomeStats(db);
+
+const title = "Nursing Home Ratings by State";
+const description = `Compare ${stats.total.toLocaleString()} Medicare-certified nursing homes across ${stats.states} states. CMS Five-Star Quality Ratings, staffing data, and inspection results.`;
+---
+
+<Base
+  title={title}
+  description={description}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Nursing Homes' }]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Nursing Home Ratings by State</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      Browse {stats.total.toLocaleString()} Medicare-certified nursing homes with CMS Five-Star Quality Ratings, inspection data, and staffing information.
+    </p>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-3 gap-4 mb-10">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{stats.total.toLocaleString()}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Nursing Homes</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{stats.states}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">States & Territories</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{stats.avg_beds}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Avg. Beds</div>
+      </div>
+    </div>
+
+    <!-- State grid -->
+    <h2 class="text-xl font-semibold mb-4">Browse by State</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {states.map(s => (
+        <a
+          href={`/nursing-homes/${s.state.toLowerCase()}`}
+          class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors"
+        >
+          <div class="flex justify-between items-start mb-1">
+            <span class="font-semibold">{getStateName(s.state)}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+              {s.home_count}
+            </span>
+          </div>
+          <div class="text-sm text-[var(--color-text-secondary)]">
+            {s.total_beds.toLocaleString()} beds · Avg rating: {s.avg_rating ? s.avg_rating.toFixed(1) : 'N/A'}/5
+          </div>
+          {s.avg_rating && (
+            <div class="text-amber-500 text-sm mt-1">{renderStars(Math.round(s.avg_rating))}</div>
+          )}
+        </a>
+      ))}
+    </div>
+
+    <!-- About section -->
+    <div class="mt-12 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
+      <h2 class="text-lg font-semibold mb-3">About CMS Five-Star Ratings</h2>
+      <div class="text-sm text-[var(--color-text-secondary)] space-y-2">
+        <p>
+          The Centers for Medicare & Medicaid Services (CMS) rates every Medicare and Medicaid-certified nursing home on a scale of 1 to 5 stars across multiple dimensions:
+        </p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><strong>Overall Rating</strong> — Combined score based on all three areas below</li>
+          <li><strong>Health Inspection</strong> — Based on on-site inspections over the last 3 years</li>
+          <li><strong>Quality Measures</strong> — Clinical outcomes (falls, infections, pressure ulcers, etc.)</li>
+          <li><strong>Staffing</strong> — Nurse and aide staffing hours relative to residents</li>
+        </ul>
+        <p>
+          Data is updated monthly from the CMS Provider Information dataset. A 5-star rating means the facility performs much above average; 1 star means much below average.
+        </p>
+      </div>
+    </div>
+
+    <p class="text-xs text-[var(--color-text-secondary)] mt-6">
+      Source: CMS Provider Data Catalog — Nursing Home Provider Information (Feb 2026).
+      This is a directory of publicly available CMS data and is not medical advice.
+    </p>
+  </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://plaindoctor.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Nursing Homes", "item": "https://plaindoctor.com/nursing-homes/" }
+    ]
+  })} />
+</Base>

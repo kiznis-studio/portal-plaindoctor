@@ -225,3 +225,77 @@ export async function getNationalStats(_db: D1Database) {
     city_count: s.city_count ?? 0,
   };
 }
+
+// --- Nursing Homes (CMS Five-Star Quality Rating) ---
+
+export interface NursingHome {
+  ccn: string;
+  slug: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  state: string;
+  zip: string | null;
+  phone: string | null;
+  county: string | null;
+  ownership: string | null;
+  beds: number | null;
+  avg_residents: number | null;
+  overall_rating: number | null;
+  health_rating: number | null;
+  qm_rating: number | null;
+  staffing_rating: number | null;
+  long_stay_qm: number | null;
+  short_stay_qm: number | null;
+  rn_hours: number | null;
+  total_deficiencies: number | null;
+  num_fines: number | null;
+  fine_amount: number | null;
+  num_penalties: number | null;
+  abuse_icon: number;
+  special_focus: number;
+  lat: number | null;
+  lng: number | null;
+}
+
+export interface NursingHomeState {
+  state: string;
+  home_count: number;
+  total_beds: number;
+  avg_rating: number | null;
+}
+
+export async function getNursingHomeBySlug(db: D1Database, slug: string): Promise<NursingHome | null> {
+  return db.prepare('SELECT * FROM nursing_homes WHERE slug = ?').bind(slug).first<NursingHome>();
+}
+
+export async function getNursingHomesByState(db: D1Database, state: string, limit = 50, offset = 0): Promise<NursingHome[]> {
+  const { results } = await db.prepare(
+    'SELECT * FROM nursing_homes WHERE state = ? ORDER BY overall_rating DESC, beds DESC LIMIT ? OFFSET ?'
+  ).bind(state, limit, offset).all<NursingHome>();
+  return results;
+}
+
+export async function getNursingHomeCountByState(db: D1Database, state: string): Promise<number> {
+  const row = await db.prepare('SELECT COUNT(*) as cnt FROM nursing_homes WHERE state = ?').bind(state).first<{ cnt: number }>();
+  return row?.cnt ?? 0;
+}
+
+export async function getAllNursingHomeStates(db: D1Database): Promise<NursingHomeState[]> {
+  const { results } = await db.prepare(
+    'SELECT * FROM nursing_home_states ORDER BY home_count DESC'
+  ).all<NursingHomeState>();
+  return results;
+}
+
+export async function getNursingHomeStats(db: D1Database): Promise<{ total: number; states: number; avg_beds: number }> {
+  const row = await db.prepare(
+    'SELECT COUNT(*) as total, COUNT(DISTINCT state) as states, ROUND(AVG(beds)) as avg_beds FROM nursing_homes'
+  ).first<{ total: number; states: number; avg_beds: number }>();
+  return row ?? { total: 0, states: 0, avg_beds: 0 };
+}
+
+export function renderStars(rating: number | null): string {
+  if (rating == null) return 'N/A';
+  return '★'.repeat(rating) + '☆'.repeat(5 - rating);
+}

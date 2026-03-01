@@ -1,0 +1,130 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getNursingHomesByState, getNursingHomeCountByState, getStateName, renderStars } from '../../lib/db';
+
+const { state: stateParam } = Astro.params;
+const stateAbbr = (stateParam || '').toUpperCase();
+const stateName = getStateName(stateAbbr);
+
+if (stateName === stateAbbr && stateAbbr.length > 2) {
+  return Astro.redirect('/404');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const page = parseInt(Astro.url.searchParams.get('page') || '1');
+const perPage = 50;
+const offset = (page - 1) * perPage;
+
+const totalCount = await getNursingHomeCountByState(db, stateAbbr);
+if (totalCount === 0) {
+  return Astro.redirect('/404');
+}
+
+const homes = await getNursingHomesByState(db, stateAbbr, perPage, offset);
+const totalPages = Math.ceil(totalCount / perPage);
+
+const title = `Nursing Homes in ${stateName} — ${totalCount.toLocaleString()} Facilities`;
+const description = `Browse ${totalCount.toLocaleString()} Medicare-certified nursing homes in ${stateName}. CMS Five-Star ratings, beds, staffing, and inspection data.`;
+
+function ratingColor(r: number | null): string {
+  if (r == null) return 'text-[var(--color-text-secondary)]';
+  if (r >= 4) return 'text-emerald-500';
+  if (r >= 3) return 'text-amber-500';
+  return 'text-amber-600 dark:text-amber-400';
+}
+---
+
+<Base
+  title={title}
+  description={description}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'Nursing Homes', href: '/nursing-homes' }, { name: stateName }]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Nursing Homes in {stateName}</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      {totalCount.toLocaleString()} Medicare-certified nursing homes with CMS Five-Star Quality Ratings.
+      {page > 1 && <span> Page {page} of {totalPages}.</span>}
+    </p>
+
+    <!-- Nursing home list -->
+    <div class="space-y-3">
+      {homes.map(h => (
+        <a
+          href={`/nursing-home/${h.slug}`}
+          class="block bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors"
+        >
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <div class="font-semibold">{h.name}</div>
+              <div class="text-sm text-[var(--color-text-secondary)]">
+                {[h.city, h.state].filter(Boolean).join(', ')}
+                {h.beds && <span> · {h.beds} beds</span>}
+                {h.county && <span class="hidden sm:inline"> · {h.county} County</span>}
+              </div>
+            </div>
+            <div class="flex items-center gap-4 text-sm">
+              {h.overall_rating != null && (
+                <div class="text-center">
+                  <div class={`text-lg font-bold ${ratingColor(h.overall_rating)}`}>
+                    {h.overall_rating}/5
+                  </div>
+                  <div class="text-amber-500 text-xs">{renderStars(h.overall_rating)}</div>
+                </div>
+              )}
+              {h.overall_rating == null && (
+                <div class="text-[var(--color-text-secondary)]">Not rated</div>
+              )}
+            </div>
+          </div>
+          {(h.health_rating || h.staffing_rating || h.qm_rating) && (
+            <div class="flex gap-4 mt-2 text-xs text-[var(--color-text-secondary)]">
+              {h.health_rating != null && <span>Health: {h.health_rating}/5</span>}
+              {h.staffing_rating != null && <span>Staffing: {h.staffing_rating}/5</span>}
+              {h.qm_rating != null && <span>Quality: {h.qm_rating}/5</span>}
+            </div>
+          )}
+        </a>
+      ))}
+    </div>
+
+    <!-- Pagination -->
+    {totalPages > 1 && (
+      <nav class="flex justify-center gap-2 mt-8">
+        {page > 1 && (
+          <a
+            href={`/nursing-homes/${stateParam}?page=${page - 1}`}
+            class="px-4 py-2 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] text-sm transition-colors"
+          >
+            ← Previous
+          </a>
+        )}
+        <span class="px-4 py-2 text-sm text-[var(--color-text-secondary)]">
+          Page {page} of {totalPages}
+        </span>
+        {page < totalPages && (
+          <a
+            href={`/nursing-homes/${stateParam}?page=${page + 1}`}
+            class="px-4 py-2 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] text-sm transition-colors"
+          >
+            Next →
+          </a>
+        )}
+      </nav>
+    )}
+
+    <p class="text-xs text-[var(--color-text-secondary)] mt-8">
+      Source: CMS Provider Data Catalog — Nursing Home Provider Information (Feb 2026).
+      Sorted by overall rating (highest first). This is a directory of publicly available CMS data and is not medical advice.
+    </p>
+  </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://plaindoctor.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Nursing Homes", "item": "https://plaindoctor.com/nursing-homes/" },
+      { "@type": "ListItem", "position": 3, "name": stateName, "item": `https://plaindoctor.com/nursing-homes/${stateParam}` }
+    ]
+  })} />
+</Base>
