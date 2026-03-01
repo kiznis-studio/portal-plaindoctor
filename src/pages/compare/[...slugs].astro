@@ -1,0 +1,277 @@
+---
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+import AdSlot from '../../components/ads/AdSlot.astro';
+import { getSpecialtyBySlug, getSpecialtyStateDistribution, getStateName, STATE_POPULATIONS } from '../../lib/db';
+
+const { slugs } = Astro.params;
+if (!slugs || !slugs.includes('-vs-')) return Astro.redirect('/compare/');
+
+const parts = slugs.split('-vs-');
+if (parts.length !== 2) return Astro.redirect('/compare/');
+
+let [slugA, slugB] = parts;
+// Canonical ordering: alphabetical
+if (slugA > slugB) {
+  return Astro.redirect('/compare/' + slugB + '-vs-' + slugA);
+}
+
+const db = Astro.locals.runtime.env.DB;
+const [specA, specB] = await Promise.all([
+  getSpecialtyBySlug(db, slugA),
+  getSpecialtyBySlug(db, slugB),
+]);
+
+if (!specA || !specB) return Astro.redirect('/compare/');
+
+const [distA, distB] = await Promise.all([
+  getSpecialtyStateDistribution(db, specA.code),
+  getSpecialtyStateDistribution(db, specB.code),
+]);
+
+// Merge states from both distributions
+const allStates = new Set([...distA.keys(), ...distB.keys()]);
+const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'];
+
+interface StateRow {
+  abbr: string;
+  name: string;
+  countA: number;
+  countB: number;
+  perCapA: number;
+  perCapB: number;
+}
+
+const stateRows: StateRow[] = US_STATES
+  .filter(s => allStates.has(s))
+  .map(s => {
+    const countA = distA.get(s) || 0;
+    const countB = distB.get(s) || 0;
+    const pop = STATE_POPULATIONS[s] || 1;
+    return {
+      abbr: s,
+      name: getStateName(s),
+      countA,
+      countB,
+      perCapA: Math.round(countA / pop * 100000 * 10) / 10,
+      perCapB: Math.round(countB / pop * 100000 * 10) / 10,
+    };
+  })
+  .sort((a, b) => (b.countA + b.countB) - (a.countA + a.countB));
+
+const totalA = specA.provider_count;
+const totalB = specB.provider_count;
+const statesA = distA.size;
+const statesB = distB.size;
+
+// Top 5 states for each
+const topStatesA = [...distA.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+const topStatesB = [...distB.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+const maxBarA = topStatesA.length > 0 ? topStatesA[0][1] : 1;
+const maxBarB = topStatesB.length > 0 ? topStatesB[0][1] : 1;
+
+// Coverage comparison
+const moreProviders = totalA > totalB ? specA.name : specB.name;
+const broaderCoverage = statesA > statesB ? specA.name : statesB > statesA ? specB.name : 'Both specialties';
+
+const faqItems = [
+  {
+    q: 'How many ' + specA.name + ' providers are there vs ' + specB.name + '?',
+    a: 'There are ' + totalA.toLocaleString() + ' ' + specA.name + ' providers and ' + totalB.toLocaleString() + ' ' + specB.name + ' providers registered in the CMS NPPES directory.',
+  },
+  {
+    q: 'Which specialty has broader geographic coverage?',
+    a: broaderCoverage + (statesA === statesB ? ' have equal coverage across ' + statesA + ' states.' : ' has broader coverage with ' + Math.max(statesA, statesB) + ' states vs ' + Math.min(statesA, statesB) + ' states.'),
+  },
+  {
+    q: 'Where is the data from?',
+    a: 'Provider counts are from the CMS National Plan and Provider Enumeration System (NPPES). Per-capita rates use 2023 Census population estimates.',
+  },
+];
+
+const faqSchema = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqItems.map(f => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+});
+
+const breadcrumbs = [
+  { name: 'Home', href: '/' },
+  { name: 'Compare', href: '/compare/' },
+  { name: specA.name + ' vs ' + specB.name },
+];
+---
+
+<Base
+  title={specA.name + ' vs ' + specB.name + ' — Provider Comparison | PlainDoctor'}
+  description={'Compare ' + specA.name + ' (' + totalA.toLocaleString() + ' providers) vs ' + specB.name + ' (' + totalB.toLocaleString() + ' providers). Side-by-side geographic distribution and per-capita density from CMS NPPES data.'}
+  breadcrumbs={breadcrumbs}
+>
+  <section class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] mb-2">
+      <a href="/" class="hover:text-[var(--color-primary)]">Home</a>
+      <span>/</span>
+      <a href="/compare/" class="hover:text-[var(--color-primary)]">Compare</a>
+      <span>/</span>
+      <span class="text-[var(--color-text)]">Comparison</span>
+    </div>
+
+    <h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text)] mb-2">
+      {specA.name} vs {specB.name}
+    </h1>
+    <p class="text-[var(--color-text-secondary)] mb-8 max-w-3xl">
+      Side-by-side comparison of provider counts, geographic distribution, and per-capita density across U.S. states.
+    </p>
+
+    {/* Side-by-side stat cards */}
+    <div class="grid md:grid-cols-2 gap-4 mb-8">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5">
+        <h2 class="font-semibold text-[var(--color-text)] mb-3">{specA.name}</h2>
+        {specA.category && specA.category !== specA.name && (
+          <p class="text-xs text-[var(--color-text-secondary)] mb-3">Category: {specA.category}</p>
+        )}
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="text-2xl font-bold text-[var(--color-primary)]">{totalA.toLocaleString()}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">Providers</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-[var(--color-text)]">{statesA}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">States</div>
+          </div>
+        </div>
+        <a href={'/specialty/' + specA.slug} class="inline-block mt-3 text-sm text-[var(--color-primary)] hover:underline">View specialty &rarr;</a>
+      </div>
+
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5">
+        <h2 class="font-semibold text-[var(--color-text)] mb-3">{specB.name}</h2>
+        {specB.category && specB.category !== specB.name && (
+          <p class="text-xs text-[var(--color-text-secondary)] mb-3">Category: {specB.category}</p>
+        )}
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="text-2xl font-bold text-[var(--color-primary)]">{totalB.toLocaleString()}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">Providers</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-[var(--color-text)]">{statesB}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">States</div>
+          </div>
+        </div>
+        <a href={'/specialty/' + specB.slug} class="inline-block mt-3 text-sm text-[var(--color-primary)] hover:underline">View specialty &rarr;</a>
+      </div>
+    </div>
+
+    {/* Top 5 States for each */}
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+      <div>
+        <h3 class="font-semibold text-[var(--color-text)] mb-3">Top 5 States — {specA.name}</h3>
+        <div class="space-y-2">
+          {topStatesA.map(([st, count]) => (
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span class="text-[var(--color-text)]">{getStateName(st)}</span>
+                <span class="font-mono text-[var(--color-text-secondary)]">{count.toLocaleString()}</span>
+              </div>
+              <div class="w-full bg-[var(--color-border)] rounded-full h-2">
+                <div class="bg-[var(--color-primary)] h-2 rounded-full" style={'width: ' + Math.round(count / maxBarA * 100) + '%'}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h3 class="font-semibold text-[var(--color-text)] mb-3">Top 5 States — {specB.name}</h3>
+        <div class="space-y-2">
+          {topStatesB.map(([st, count]) => (
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span class="text-[var(--color-text)]">{getStateName(st)}</span>
+                <span class="font-mono text-[var(--color-text-secondary)]">{count.toLocaleString()}</span>
+              </div>
+              <div class="w-full bg-[var(--color-border)] rounded-full h-2">
+                <div class="bg-teal-500 h-2 rounded-full" style={'width: ' + Math.round(count / maxBarB * 100) + '%'}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <AdSlot slot="mid" />
+
+    {/* Geographic comparison table */}
+    <h2 class="text-lg font-semibold text-[var(--color-text)] mb-4 mt-8">Geographic Comparison</h2>
+    <div class="overflow-x-auto mb-8">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--color-border)]">
+            <th class="text-left py-3 px-2 font-medium text-[var(--color-text)]">State</th>
+            <th class="text-right py-3 px-2 font-medium text-[var(--color-text)]">{specA.name}</th>
+            <th class="text-right py-3 px-2 font-medium text-[var(--color-text)]">{specB.name}</th>
+            <th class="text-right py-3 px-2 font-medium text-[var(--color-text)] hidden sm:table-cell">{specA.name} /100K</th>
+            <th class="text-right py-3 px-2 font-medium text-[var(--color-text)] hidden sm:table-cell">{specB.name} /100K</th>
+          </tr>
+        </thead>
+        <tbody>
+          {stateRows.map(row => (
+            <tr class="border-b border-[var(--color-border)] hover:bg-[var(--color-surface)]">
+              <td class="py-2 px-2 text-[var(--color-text)]">{row.name}</td>
+              <td class="py-2 px-2 text-right font-mono text-[var(--color-text)]">{row.countA.toLocaleString()}</td>
+              <td class="py-2 px-2 text-right font-mono text-[var(--color-text)]">{row.countB.toLocaleString()}</td>
+              <td class="py-2 px-2 text-right font-mono text-[var(--color-text-secondary)] hidden sm:table-cell">{row.perCapA.toFixed(1)}</td>
+              <td class="py-2 px-2 text-right font-mono text-[var(--color-text-secondary)] hidden sm:table-cell">{row.perCapB.toFixed(1)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {/* Coverage narrative */}
+    <div class="p-4 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] mb-8">
+      <h3 class="font-semibold text-[var(--color-text)] mb-2">Summary</h3>
+      <p class="text-sm text-[var(--color-text-secondary)]">
+        {moreProviders} has more registered providers nationally ({totalA > totalB ? totalA.toLocaleString() : totalB.toLocaleString()} vs {totalA > totalB ? totalB.toLocaleString() : totalA.toLocaleString()}).
+        {statesA !== statesB
+          ? ' ' + broaderCoverage + ' has broader geographic coverage across ' + Math.max(statesA, statesB) + ' states.'
+          : ' Both specialties are present in ' + statesA + ' states.'}
+      </p>
+    </div>
+
+    {/* Links */}
+    <div class="flex flex-wrap gap-2 mb-8">
+      <a href={'/specialty/' + specA.slug} class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors">{specA.name} Details &rarr;</a>
+      <a href={'/specialty/' + specB.slug} class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors">{specB.name} Details &rarr;</a>
+      <a href="/compare/" class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors">More Comparisons &rarr;</a>
+    </div>
+
+    {/* FAQ */}
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold text-[var(--color-text)] mb-4">FAQ</h2>
+      <div class="space-y-4">
+        {faqItems.map(f => (
+          <details class="group bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)]">
+            <summary class="flex items-center justify-between p-4 cursor-pointer font-medium text-[var(--color-text)]">
+              {f.q}
+              <span class="ml-2 text-[var(--color-text-secondary)] group-open:rotate-180 transition-transform">&#9660;</span>
+            </summary>
+            <div class="px-4 pb-4 text-[var(--color-text-secondary)] text-sm">{f.a}</div>
+          </details>
+        ))}
+      </div>
+    </div>
+
+    <div class="p-4 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+      <p class="text-xs text-[var(--color-text-secondary)]">
+        Provider counts from CMS NPPES. Per-capita rates use 2023 Census population estimates.
+        PlainDoctor does not rate or recommend providers.
+        <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a>.
+      </p>
+    </div>
+  </section>
+  <script type="application/ld+json" set:html={faqSchema} />
+</Base>

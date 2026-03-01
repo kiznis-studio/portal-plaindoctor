@@ -1,0 +1,161 @@
+---
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+import AdSlot from '../../components/ads/AdSlot.astro';
+import { getTopSpecialties } from '../../lib/db';
+
+const db = Astro.locals.runtime.env.DB;
+const topSpecialties = await getTopSpecialties(db, 20);
+
+// Generate popular comparison pairs from top 15 specialties
+const top15 = topSpecialties.slice(0, 15);
+const popularPairs: { slugA: string; slugB: string; nameA: string; nameB: string }[] = [];
+for (let i = 0; i < Math.min(top15.length, 10); i++) {
+  for (let j = i + 1; j < Math.min(top15.length, 10); j++) {
+    const a = top15[i];
+    const b = top15[j];
+    // Canonical ordering: alphabetical by slug
+    if (a.slug < b.slug) {
+      popularPairs.push({ slugA: a.slug, slugB: b.slug, nameA: a.name, nameB: b.name });
+    } else {
+      popularPairs.push({ slugA: b.slug, slugB: a.slug, nameA: b.name, nameB: a.name });
+    }
+  }
+}
+
+// Take first 50 pairs
+const displayPairs = popularPairs.slice(0, 50);
+
+const specialtyOptions = topSpecialties.map(s => ({ slug: s.slug, name: s.name }));
+const specialtyJson = JSON.stringify(specialtyOptions);
+
+const breadcrumbs = [
+  { name: 'Home', href: '/' },
+  { name: 'Compare Specialties' },
+];
+---
+
+<Base
+  title="Compare Medical Specialties — Provider Counts & Distribution | PlainDoctor"
+  description="Compare medical specialties side-by-side. See provider counts, geographic distribution, and per-capita density for any two specialties from CMS NPPES data."
+  breadcrumbs={breadcrumbs}
+>
+  <section class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] mb-2">
+      <a href="/" class="hover:text-[var(--color-primary)]">Home</a>
+      <span>/</span>
+      <span class="text-[var(--color-text)]">Compare</span>
+    </div>
+
+    <h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text)] mb-2">Compare Medical Specialties</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8 max-w-3xl">
+      Select two specialties to compare provider counts, geographic distribution, and per-capita density across U.S. states.
+    </p>
+
+    {/* Selector */}
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 mb-10">
+      <div class="grid md:grid-cols-[1fr_auto_1fr_auto] gap-4 items-end">
+        <div>
+          <label for="spec-a" class="block text-sm font-medium text-[var(--color-text)] mb-1">Specialty A</label>
+          <select id="spec-a" class="w-full h-10 px-3 text-sm rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
+            <option value="">Select a specialty...</option>
+            {topSpecialties.map(s => (
+              <option value={s.slug}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+        <div class="text-center font-bold text-[var(--color-text-secondary)] self-center">vs</div>
+        <div>
+          <label for="spec-b" class="block text-sm font-medium text-[var(--color-text)] mb-1">Specialty B</label>
+          <select id="spec-b" class="w-full h-10 px-3 text-sm rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
+            <option value="">Select a specialty...</option>
+            {topSpecialties.map(s => (
+              <option value={s.slug}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <button id="compare-btn" class="w-full h-10 px-6 text-sm font-medium rounded-lg bg-[var(--color-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-50" disabled>
+            Compare
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <AdSlot slot="mid" />
+
+    {/* Popular comparisons */}
+    <h2 class="text-lg font-semibold text-[var(--color-text)] mb-4 mt-8">Popular Comparisons</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-10">
+      {displayPairs.map(pair => (
+        <a
+          href={'/compare/' + pair.slugA + '-vs-' + pair.slugB}
+          class="block p-3 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface)] transition-colors"
+        >
+          <span class="text-sm text-[var(--color-text)]">{pair.nameA}</span>
+          <span class="text-xs text-[var(--color-text-secondary)] mx-1">vs</span>
+          <span class="text-sm text-[var(--color-text)]">{pair.nameB}</span>
+        </a>
+      ))}
+    </div>
+
+    {/* Methodology */}
+    <section class="mt-10">
+      <h2 class="text-lg font-semibold text-[var(--color-text)] mb-4">How Comparisons Work</h2>
+      <div class="space-y-4 text-sm text-[var(--color-text-secondary)]">
+        <p>
+          Our comparison tool pulls provider counts from the CMS National Plan and Provider Enumeration System (NPPES), which tracks every healthcare provider in the United States.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="p-4 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+            <h3 class="font-semibold text-[var(--color-text)] mb-2">Provider Counts</h3>
+            <p>Total registered providers for each specialty, broken down by state.</p>
+          </div>
+          <div class="p-4 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+            <h3 class="font-semibold text-[var(--color-text)] mb-2">Per-Capita Density</h3>
+            <p>Providers per 100,000 population using 2023 Census estimates. Helps compare access across states of different sizes.</p>
+          </div>
+        </div>
+        <div class="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <p class="text-[var(--color-text)]">
+            <strong>Note:</strong> Provider counts reflect NPPES registrations, not active practitioners.
+            Some providers may be retired or practicing in a different state. Comparisons show relative distribution, not absolute access.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <div class="mt-6 p-4 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+      <p class="text-xs text-[var(--color-text-secondary)]">
+        Data from CMS NPPES. PlainDoctor does not rate or recommend providers.
+        <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a>.
+      </p>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function() {
+      var selA = document.getElementById('spec-a');
+      var selB = document.getElementById('spec-b');
+      var btn = document.getElementById('compare-btn');
+
+      function updateBtn() {
+        var a = selA.value;
+        var b = selB.value;
+        btn.disabled = !a || !b || a === b;
+      }
+
+      selA.addEventListener('change', updateBtn);
+      selB.addEventListener('change', updateBtn);
+
+      btn.addEventListener('click', function() {
+        var a = selA.value;
+        var b = selB.value;
+        if (!a || !b || a === b) return;
+        // Canonical ordering
+        if (a > b) { var tmp = a; a = b; b = tmp; }
+        window.location.href = '/compare/' + a + '-vs-' + b;
+      });
+    })();
+  </script>
+</Base>
