@@ -17,6 +17,7 @@ export const GET: APIRoute = async ({ locals }) => {
     `${BASE}/sitemap-specialty-states.xml`,
     `${BASE}/sitemap-compare.xml`,
     `${BASE}/sitemap-nursing-staffing.xml`,
+    `${BASE}/sitemap-nursing-deficiencies.xml`,
   ];
 
   for (let i = 1; i <= providerPages; i++) {

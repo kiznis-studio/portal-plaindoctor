@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getNursingHomeBySlug, getNationalStaffingAvg, getStateName, renderStars } from '../../lib/db';
+import { getNursingHomeBySlug, getNationalStaffingAvg, getNationalDeficiencyAvg, getStateName, renderStars } from '../../lib/db';
 
 const { slug } = Astro.params;
 const db = Astro.locals.runtime.env.DB;
@@ -13,7 +13,10 @@ if (!nh) {
 
 const stateName = getStateName(nh.state);
 const phone = nh.phone ? nh.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3') : null;
-const nationalAvg = await getNationalStaffingAvg(db);
+const [nationalAvg, defAvg] = await Promise.all([
+  getNationalStaffingAvg(db),
+  getNationalDeficiencyAvg(db),
+]);
 const rnVsNational = nh.rn_hours != null ? ((nh.rn_hours - nationalAvg.avg_rn) / nationalAvg.avg_rn * 100).toFixed(0) : null;
 
 function ratingLabel(r: number | null): string {
@@ -180,10 +183,15 @@ const faqItems = [
     <!-- Compliance & Safety -->
     <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 mb-8">
       <h2 class="font-semibold mb-4">Compliance & Safety</h2>
-      <div class="grid sm:grid-cols-3 gap-4 text-center">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
         <div>
-          <div class="text-2xl font-bold">{nh.total_deficiencies ?? 0}</div>
-          <div class="text-sm text-[var(--color-text-secondary)]">Health Deficiencies</div>
+          <div class={`text-2xl font-bold ${(nh.total_deficiencies ?? 0) > defAvg.avg_deficiencies ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400'}`}>{nh.total_deficiencies ?? 0}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Deficiencies</div>
+          <div class="text-xs text-[var(--color-text-secondary)]">national avg: {defAvg.avg_deficiencies}</div>
+        </div>
+        <div>
+          <div class="text-2xl font-bold">{nh.complaint_deficiencies ?? 0}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Complaint-Based</div>
         </div>
         <div>
           <div class="text-2xl font-bold">{nh.num_fines ?? 0}</div>
@@ -199,6 +207,64 @@ const faqItems = [
           <div class="text-sm text-[var(--color-text-secondary)]">Total Penalties</div>
         </div>
       </div>
+
+      <!-- Deficiency cycle breakdown -->
+      {nh.total_deficiencies != null && (
+        <div class="mt-5 border-t border-[var(--color-border)] pt-4">
+          <h3 class="text-sm font-semibold mb-3">Inspection Cycle Breakdown</h3>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="bg-[var(--color-border)]/20 rounded-lg p-3">
+              <div class="text-xs text-[var(--color-text-secondary)] mb-2">Cycle 1 (Most Recent Survey)</div>
+              <div class="flex justify-between text-sm">
+                <span>Standard</span>
+                <span class="font-medium">{nh.standard_deficiencies ?? 0}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span>Complaint</span>
+                <span class="font-medium">{nh.complaint_deficiencies ?? 0}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span>Deficiency Score</span>
+                <span class="font-medium">{nh.deficiency_score ?? 'N/A'}</span>
+              </div>
+              {nh.cycle1_survey_date && (
+                <div class="text-xs text-[var(--color-text-secondary)] mt-2">Survey: {nh.cycle1_survey_date}</div>
+              )}
+            </div>
+            {nh.cycle2_total_deficiencies != null && (
+              <div class="bg-[var(--color-border)]/20 rounded-lg p-3">
+                <div class="text-xs text-[var(--color-text-secondary)] mb-2">Cycle 2 (Prior Survey)</div>
+                <div class="flex justify-between text-sm">
+                  <span>Standard</span>
+                  <span class="font-medium">{nh.cycle2_standard ?? 0}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span>Complaint</span>
+                  <span class="font-medium">{nh.cycle2_complaint ?? 0}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span>Deficiency Score</span>
+                  <span class="font-medium">{nh.cycle2_score ?? 'N/A'}</span>
+                </div>
+                {nh.cycle2_survey_date && (
+                  <div class="text-xs text-[var(--color-text-secondary)] mt-2">Survey: {nh.cycle2_survey_date}</div>
+                )}
+              </div>
+            )}
+          </div>
+          {nh.infection_citations != null && nh.infection_citations > 0 && (
+            <div class="mt-3 text-sm">
+              <span class="text-[var(--color-text-secondary)]">Infection control citations:</span>
+              <span class="font-medium ml-1">{nh.infection_citations}</span>
+            </div>
+          )}
+          <p class="text-xs text-[var(--color-text-secondary)] mt-3">
+            <a href={`/nursing-homes/${nh.state.toLowerCase()}/deficiencies`} class="text-[var(--color-primary)] hover:underline">
+              Compare deficiencies across {stateName} &rarr;
+            </a>
+          </p>
+        </div>
+      )}
 
       {(nh.abuse_icon === 1 || nh.special_focus === 1) && (
         <div class="mt-4 space-y-2">

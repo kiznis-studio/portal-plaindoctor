@@ -249,6 +249,17 @@ export interface NursingHome {
   short_stay_qm: number | null;
   rn_hours: number | null;
   total_deficiencies: number | null;
+  standard_deficiencies: number | null;
+  complaint_deficiencies: number | null;
+  deficiency_score: number | null;
+  cycle1_survey_date: string | null;
+  cycle2_total_deficiencies: number | null;
+  cycle2_standard: number | null;
+  cycle2_complaint: number | null;
+  cycle2_score: number | null;
+  cycle2_survey_date: string | null;
+  infection_citations: number | null;
+  weighted_health_score: number | null;
   num_fines: number | null;
   fine_amount: number | null;
   num_penalties: number | null;
@@ -358,4 +369,74 @@ export async function getNationalStaffingAvg(db: D1Database): Promise<{ avg_rn: 
      FROM nursing_homes WHERE rn_hours IS NOT NULL`
   ).first<{ avg_rn: number; avg_rating: number }>();
   return row ?? { avg_rn: 0, avg_rating: 0 };
+}
+
+// --- Nursing Home Deficiency Inspector ---
+
+export async function getNursingHomesByDeficiencies(
+  db: D1Database, limit = 100, offset = 0
+): Promise<NursingHome[]> {
+  const { results } = await db.prepare(
+    `SELECT * FROM nursing_homes
+     WHERE total_deficiencies IS NOT NULL
+     ORDER BY total_deficiencies DESC
+     LIMIT ? OFFSET ?`
+  ).bind(limit, offset).all<NursingHome>();
+  return results;
+}
+
+export async function getNursingHomeDeficienciesByState(
+  db: D1Database, state: string, limit = 50, offset = 0
+): Promise<NursingHome[]> {
+  const { results } = await db.prepare(
+    `SELECT * FROM nursing_homes
+     WHERE state = ? AND total_deficiencies IS NOT NULL
+     ORDER BY total_deficiencies DESC
+     LIMIT ? OFFSET ?`
+  ).bind(state, limit, offset).all<NursingHome>();
+  return results;
+}
+
+export interface DeficiencySummary {
+  state: string;
+  home_count: number;
+  avg_deficiencies: number;
+  avg_health_rating: number;
+  total_fines: number;
+  pct_with_complaints: number;
+  avg_infection_citations: number;
+}
+
+export async function getDeficiencySummaryByState(
+  db: D1Database
+): Promise<DeficiencySummary[]> {
+  const { results } = await db.prepare(
+    `SELECT
+       state,
+       COUNT(*) as home_count,
+       ROUND(AVG(total_deficiencies), 1) as avg_deficiencies,
+       ROUND(AVG(health_rating), 1) as avg_health_rating,
+       ROUND(SUM(COALESCE(fine_amount, 0))) as total_fines,
+       ROUND(100.0 * SUM(CASE WHEN complaint_deficiencies > 0 THEN 1 ELSE 0 END) / COUNT(*), 1) as pct_with_complaints,
+       ROUND(AVG(COALESCE(infection_citations, 0)), 1) as avg_infection_citations
+     FROM nursing_homes
+     WHERE total_deficiencies IS NOT NULL
+     GROUP BY state
+     ORDER BY avg_deficiencies DESC`
+  ).all<DeficiencySummary>();
+  return results;
+}
+
+export async function getNationalDeficiencyAvg(
+  db: D1Database
+): Promise<{ avg_deficiencies: number; avg_score: number; avg_fines: number; total_with_abuse: number }> {
+  const row = await db.prepare(
+    `SELECT
+       ROUND(AVG(total_deficiencies), 1) as avg_deficiencies,
+       ROUND(AVG(deficiency_score), 0) as avg_score,
+       ROUND(AVG(COALESCE(fine_amount, 0)), 0) as avg_fines,
+       SUM(CASE WHEN abuse_icon = 1 THEN 1 ELSE 0 END) as total_with_abuse
+     FROM nursing_homes WHERE total_deficiencies IS NOT NULL`
+  ).first<{ avg_deficiencies: number; avg_score: number; avg_fines: number; total_with_abuse: number }>();
+  return row ?? { avg_deficiencies: 0, avg_score: 0, avg_fines: 0, total_with_abuse: 0 };
 }

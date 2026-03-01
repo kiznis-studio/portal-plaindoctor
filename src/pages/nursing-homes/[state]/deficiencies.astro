@@ -1,0 +1,142 @@
+---
+import Base from '../../../layouts/Base.astro';
+import {
+  getNursingHomeDeficienciesByState,
+  getNursingHomeCountByState,
+  getNationalDeficiencyAvg,
+  getStateName,
+} from '../../../lib/db';
+
+const stateParam = (Astro.params.state || '').toUpperCase();
+const stateName = getStateName(stateParam);
+if (stateName === stateParam && stateParam.length !== 2) {
+  return Astro.redirect('/404');
+}
+
+const db = Astro.locals.runtime.env.DB;
+
+const [homes, totalCount, nationalAvg] = await Promise.all([
+  getNursingHomeDeficienciesByState(db, stateParam, 100),
+  getNursingHomeCountByState(db, stateParam),
+  getNationalDeficiencyAvg(db),
+]);
+
+if (totalCount === 0) return Astro.redirect('/404');
+
+const avgDef = homes.length > 0
+  ? (homes.reduce((sum, h) => sum + (h.total_deficiencies || 0), 0) / homes.length).toFixed(1)
+  : '0';
+
+const title = `Nursing Home Deficiency Rankings in ${stateName} | PlainDoctor`;
+const description = `${totalCount} nursing homes in ${stateName} ranked by health inspection deficiencies. State average: ${avgDef} (national: ${nationalAvg.avg_deficiencies}).`;
+
+function ratingColor(r: number | null): string {
+  if (r == null) return 'text-[var(--color-text-secondary)]';
+  if (r >= 4) return 'text-emerald-500';
+  if (r >= 3) return 'text-amber-500';
+  return 'text-amber-600 dark:text-amber-400';
+}
+---
+
+<Base
+  title={title}
+  description={description}
+  breadcrumbs={[
+    { name: 'Home', href: '/' },
+    { name: 'Nursing Homes', href: '/nursing-homes' },
+    { name: 'Deficiency Rankings', href: '/nursing-homes/deficiency-rankings' },
+    { name: stateName },
+  ]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Nursing Home Deficiencies in {stateName}</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      Facilities in {stateName} ranked by health inspection deficiencies.
+      State average: <strong class="text-[var(--color-text)]">{avgDef}</strong> deficiencies
+      (national: {nationalAvg.avg_deficiencies}).
+    </p>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{totalCount}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Facilities</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">{avgDef}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Avg Deficiencies</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{nationalAvg.avg_deficiencies}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">National Avg</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{nationalAvg.avg_score}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">National Avg Score</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <h2 class="text-xl font-semibold mb-4">Top 100 by Deficiency Count</h2>
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden mb-8">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-[var(--color-border)]/30">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">#</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Facility</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase hidden sm:table-cell">City</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Deficiencies</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase hidden md:table-cell">Complaints</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase hidden md:table-cell">Fines</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Health Rating</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--color-border)]">
+            {homes.map((nh, i) => (
+              <tr class="hover:bg-[var(--color-surface)] transition-colors">
+                <td class="px-4 py-2.5 text-[var(--color-text-secondary)]">{i + 1}</td>
+                <td class="px-4 py-2.5">
+                  <a href={`/nursing-home/${nh.slug}`} class="text-[var(--color-primary)] hover:underline font-medium">
+                    {nh.name}
+                  </a>
+                  {nh.abuse_icon === 1 && <span class="text-xs text-amber-600 dark:text-amber-400 ml-1" title="Abuse icon">⚠</span>}
+                </td>
+                <td class="px-4 py-2.5 text-[var(--color-text-secondary)] hidden sm:table-cell">{nh.city || '—'}</td>
+                <td class="px-4 py-2.5 text-right font-semibold tabular-nums text-amber-600 dark:text-amber-400">{nh.total_deficiencies}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums hidden md:table-cell">{nh.complaint_deficiencies ?? 0}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums hidden md:table-cell">
+                  {nh.fine_amount ? `$${Math.round(nh.fine_amount).toLocaleString()}` : '—'}
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                  <span class={ratingColor(nh.health_rating)}>{nh.health_rating != null ? `${nh.health_rating}/5` : 'N/A'}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="flex gap-4 text-sm">
+      <a href="/nursing-homes/deficiency-rankings" class="text-[var(--color-primary)] hover:underline">&larr; National Rankings</a>
+      <a href={`/nursing-homes/${stateParam.toLowerCase()}`} class="text-[var(--color-primary)] hover:underline">All {stateName} Nursing Homes &rarr;</a>
+    </div>
+
+    <p class="text-xs text-[var(--color-text-secondary)] mt-8">
+      Source: CMS Provider Data Catalog — Nursing Home Provider Information (Feb 2026).
+      Deficiency data from Rating Cycle 1 (most recent standard survey).
+    </p>
+  </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://plaindoctor.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Nursing Homes", "item": "https://plaindoctor.com/nursing-homes/" },
+      { "@type": "ListItem", "position": 3, "name": "Deficiency Rankings", "item": "https://plaindoctor.com/nursing-homes/deficiency-rankings" },
+      { "@type": "ListItem", "position": 4, "name": stateName }
+    ]
+  })} />
+</Base>

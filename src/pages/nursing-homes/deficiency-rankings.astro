@@ -1,0 +1,173 @@
+---
+import Base from '../../layouts/Base.astro';
+import {
+  getNursingHomesByDeficiencies,
+  getDeficiencySummaryByState,
+  getNationalDeficiencyAvg,
+  getStateName,
+  renderStars,
+} from '../../lib/db';
+
+const db = Astro.locals.runtime.env.DB;
+
+const [worstHomes, stateSummaries, nationalAvg] = await Promise.all([
+  getNursingHomesByDeficiencies(db, 100),
+  getDeficiencySummaryByState(db),
+  getNationalDeficiencyAvg(db),
+]);
+
+const title = 'Nursing Home Deficiency Rankings — Most Health Deficiencies | PlainDoctor';
+const description = `National ranking of nursing homes by health inspection deficiencies. National average: ${nationalAvg.avg_deficiencies} deficiencies. Compare facilities by compliance issues, fines, and inspection results.`;
+
+function ratingColor(r: number | null): string {
+  if (r == null) return 'text-[var(--color-text-secondary)]';
+  if (r >= 4) return 'text-emerald-500';
+  if (r >= 3) return 'text-amber-500';
+  return 'text-amber-600 dark:text-amber-400';
+}
+---
+
+<Base
+  title={title}
+  description={description}
+  breadcrumbs={[
+    { name: 'Home', href: '/' },
+    { name: 'Nursing Homes', href: '/nursing-homes' },
+    { name: 'Deficiency Rankings' },
+  ]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Nursing Home Deficiency Rankings</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      Facilities with the most health inspection deficiencies. National average: <strong class="text-[var(--color-text)]">{nationalAvg.avg_deficiencies}</strong> deficiencies per facility. Higher counts may indicate persistent quality concerns.
+    </p>
+
+    <!-- National Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">{nationalAvg.avg_deficiencies}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Avg Deficiencies</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{nationalAvg.avg_score}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Avg Deficiency Score</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">${Math.round(nationalAvg.avg_fines).toLocaleString()}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Avg Fine Amount</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">{nationalAvg.total_with_abuse}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Facilities w/ Abuse Icon</div>
+      </div>
+    </div>
+
+    <!-- Worst 100 Table -->
+    <h2 class="text-xl font-semibold mb-4">100 Facilities with Most Deficiencies</h2>
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden mb-10">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-[var(--color-border)]/30">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">#</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Facility</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase hidden sm:table-cell">State</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Deficiencies</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase hidden md:table-cell">Complaints</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase hidden md:table-cell">Fines</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Health Rating</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--color-border)]">
+            {worstHomes.map((nh, i) => (
+              <tr class="hover:bg-[var(--color-surface)] transition-colors">
+                <td class="px-4 py-2.5 text-[var(--color-text-secondary)]">{i + 1}</td>
+                <td class="px-4 py-2.5">
+                  <a href={`/nursing-home/${nh.slug}`} class="text-[var(--color-primary)] hover:underline font-medium">
+                    {nh.name}
+                  </a>
+                  {nh.city && <span class="text-xs text-[var(--color-text-secondary)] ml-1">{nh.city}</span>}
+                  {nh.abuse_icon === 1 && <span class="text-xs text-amber-600 dark:text-amber-400 ml-1" title="Abuse icon">⚠</span>}
+                </td>
+                <td class="px-4 py-2.5 hidden sm:table-cell">{nh.state}</td>
+                <td class="px-4 py-2.5 text-right font-semibold tabular-nums text-amber-600 dark:text-amber-400">{nh.total_deficiencies}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums hidden md:table-cell">{nh.complaint_deficiencies ?? 0}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums hidden md:table-cell">
+                  {nh.fine_amount ? `$${Math.round(nh.fine_amount).toLocaleString()}` : '-'}
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                  <span class={ratingColor(nh.health_rating)}>{nh.health_rating != null ? `${nh.health_rating}/5` : 'N/A'}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- State Deficiency Summary -->
+    <h2 class="text-xl font-semibold mb-4">Deficiencies by State</h2>
+    <p class="text-sm text-[var(--color-text-secondary)] mb-4">
+      Average deficiency count per facility by state. Click a state for detailed facility rankings.
+    </p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-10">
+      {stateSummaries.map(s => (
+        <a
+          href={`/nursing-homes/${s.state.toLowerCase()}/deficiencies`}
+          class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors"
+        >
+          <div class="flex justify-between items-start mb-1">
+            <span class="font-semibold">{getStateName(s.state)}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+              {s.home_count}
+            </span>
+          </div>
+          <div class="text-sm text-[var(--color-text-secondary)]">
+            Avg: <strong class={s.avg_deficiencies > nationalAvg.avg_deficiencies ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400'}>{s.avg_deficiencies}</strong> deficiencies
+            · Health: {s.avg_health_rating}/5
+          </div>
+          <div class="text-xs text-[var(--color-text-secondary)] mt-1">
+            {s.pct_with_complaints}% have complaint deficiencies
+          </div>
+        </a>
+      ))}
+    </div>
+
+    <!-- Methodology -->
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 mb-8">
+      <h2 class="text-lg font-semibold mb-3">About These Rankings</h2>
+      <div class="text-sm text-[var(--color-text-secondary)] space-y-2">
+        <p>Health deficiencies are identified during CMS health inspections (surveys). There are two types:</p>
+        <ul class="list-disc pl-5">
+          <li><strong>Standard deficiencies:</strong> Found during routine scheduled inspections</li>
+          <li><strong>Complaint deficiencies:</strong> Found during investigations triggered by complaints</li>
+        </ul>
+        <p>
+          A higher deficiency count may indicate persistent quality issues but does not necessarily mean current poor care — facilities may have corrected issues since their last survey.
+          The deficiency score weights severity and scope, providing a more nuanced view than raw counts.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex gap-4 text-sm mb-6">
+      <a href="/nursing-homes" class="text-[var(--color-primary)] hover:underline">&larr; All Nursing Homes</a>
+      <a href="/nursing-homes/staffing-rankings" class="text-[var(--color-primary)] hover:underline">Staffing Rankings &rarr;</a>
+    </div>
+
+    <p class="text-xs text-[var(--color-text-secondary)]">
+      Source: CMS Provider Data Catalog — Nursing Home Provider Information (Feb 2026).
+      Deficiency data from Rating Cycle 1 (most recent standard survey).
+      This is not medical advice.
+    </p>
+  </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://plaindoctor.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Nursing Homes", "item": "https://plaindoctor.com/nursing-homes/" },
+      { "@type": "ListItem", "position": 3, "name": "Deficiency Rankings" }
+    ]
+  })} />
+</Base>
