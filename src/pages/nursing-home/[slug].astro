@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getNursingHomeBySlug, getStateName, renderStars } from '../../lib/db';
+import { getNursingHomeBySlug, getNationalStaffingAvg, getStateName, renderStars } from '../../lib/db';
 
 const { slug } = Astro.params;
 const db = Astro.locals.runtime.env.DB;
@@ -13,6 +13,8 @@ if (!nh) {
 
 const stateName = getStateName(nh.state);
 const phone = nh.phone ? nh.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3') : null;
+const nationalAvg = await getNationalStaffingAvg(db);
+const rnVsNational = nh.rn_hours != null ? ((nh.rn_hours - nationalAvg.avg_rn) / nationalAvg.avg_rn * 100).toFixed(0) : null;
 
 function ratingLabel(r: number | null): string {
   if (r == null) return 'Not rated';
@@ -213,6 +215,45 @@ const faqItems = [
         </div>
       )}
     </div>
+
+    <!-- Staffing Detail -->
+    {nh.rn_hours != null && (
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 mb-8">
+        <h2 class="font-semibold mb-4">Staffing Analysis</h2>
+        <div class="grid sm:grid-cols-3 gap-4 text-center mb-4">
+          <div>
+            <div class="text-2xl font-bold">{nh.rn_hours.toFixed(2)}</div>
+            <div class="text-sm text-[var(--color-text-secondary)]">RN Hours/Resident/Day</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold">{nationalAvg.avg_rn}</div>
+            <div class="text-sm text-[var(--color-text-secondary)]">National Average</div>
+          </div>
+          <div>
+            <div class={`text-2xl font-bold ${Number(rnVsNational) >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              {Number(rnVsNational) >= 0 ? '+' : ''}{rnVsNational}%
+            </div>
+            <div class="text-sm text-[var(--color-text-secondary)]">vs National Avg</div>
+          </div>
+        </div>
+        <div class="w-full bg-[var(--color-border)] rounded-full h-3 mb-2">
+          <div
+            class="h-3 rounded-full bg-[var(--color-primary)]"
+            style={`width: ${Math.min((nh.rn_hours / (nationalAvg.avg_rn * 3)) * 100, 100)}%;`}
+          ></div>
+        </div>
+        <div class="flex justify-between text-xs text-[var(--color-text-secondary)]">
+          <span>0</span>
+          <span>National avg: {nationalAvg.avg_rn}</span>
+          <span>{(nationalAvg.avg_rn * 3).toFixed(1)}</span>
+        </div>
+        <p class="text-xs text-[var(--color-text-secondary)] mt-3">
+          <a href={`/nursing-homes/${nh.state.toLowerCase()}/staffing`} class="text-[var(--color-primary)] hover:underline">
+            Compare staffing across {stateName} &rarr;
+          </a>
+        </p>
+      </div>
+    )}
 
     <!-- FAQ -->
     <div class="space-y-3 mb-8">

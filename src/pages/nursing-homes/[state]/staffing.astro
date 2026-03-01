@@ -1,0 +1,137 @@
+---
+import Base from '../../../layouts/Base.astro';
+import {
+  getNursingHomeStaffingByState,
+  getNursingHomeCountByState,
+  getNationalStaffingAvg,
+  getStateName,
+  renderStars,
+} from '../../../lib/db';
+
+const stateParam = (Astro.params.state || '').toUpperCase();
+const stateName = getStateName(stateParam);
+if (stateName === stateParam && stateParam.length !== 2) {
+  return Astro.redirect('/404');
+}
+
+const db = Astro.locals.runtime.env.DB;
+
+const [homes, totalCount, nationalAvg] = await Promise.all([
+  getNursingHomeStaffingByState(db, stateParam, 100),
+  getNursingHomeCountByState(db, stateParam),
+  getNationalStaffingAvg(db),
+]);
+
+if (totalCount === 0) return Astro.redirect('/404');
+
+const avgRn = homes.length > 0
+  ? (homes.reduce((sum, h) => sum + (h.rn_hours || 0), 0) / homes.length).toFixed(3)
+  : '0';
+
+const title = `Nursing Home Staffing Rankings in ${stateName} | PlainDoctor`;
+const description = `Top nursing homes in ${stateName} by RN staffing hours. ${totalCount} facilities. Average RN hours: ${avgRn} (national: ${nationalAvg.avg_rn}).`;
+
+function ratingColor(r: number | null): string {
+  if (r == null) return 'text-[var(--color-text-secondary)]';
+  if (r >= 4) return 'text-emerald-500';
+  if (r >= 3) return 'text-amber-500';
+  return 'text-amber-600 dark:text-amber-400';
+}
+---
+
+<Base
+  title={title}
+  description={description}
+  breadcrumbs={[
+    { name: 'Home', href: '/' },
+    { name: 'Nursing Homes', href: '/nursing-homes' },
+    { name: 'Staffing Rankings', href: '/nursing-homes/staffing-rankings' },
+    { name: stateName },
+  ]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Nursing Home Staffing in {stateName}</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      Top facilities in {stateName} ranked by RN hours per resident per day.
+      State average: <strong class="text-[var(--color-text)]">{avgRn}</strong> hours
+      (national: {nationalAvg.avg_rn}).
+    </p>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-3 gap-4 mb-10">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{totalCount}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Facilities</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{avgRn}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Avg RN Hours</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{nationalAvg.avg_rn}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">National Avg</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden mb-8">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-[var(--color-border)]/30">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">#</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Facility</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">City</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">RN Hours</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Staffing</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Overall</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Beds</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--color-border)]">
+            {homes.map((nh, i) => (
+              <tr class="hover:bg-[var(--color-surface)] transition-colors">
+                <td class="px-4 py-2.5 text-[var(--color-text-secondary)]">{i + 1}</td>
+                <td class="px-4 py-2.5">
+                  <a href={`/nursing-home/${nh.slug}`} class="text-[var(--color-primary)] hover:underline font-medium">
+                    {nh.name}
+                  </a>
+                </td>
+                <td class="px-4 py-2.5 text-[var(--color-text-secondary)]">{nh.city || '—'}</td>
+                <td class="px-4 py-2.5 text-right font-semibold tabular-nums">{nh.rn_hours!.toFixed(2)}</td>
+                <td class="px-4 py-2.5 text-right">
+                  <span class={ratingColor(nh.staffing_rating)}>{nh.staffing_rating != null ? `${nh.staffing_rating}/5` : 'N/A'}</span>
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                  <span class={ratingColor(nh.overall_rating)}>{nh.overall_rating != null ? `${nh.overall_rating}/5` : 'N/A'}</span>
+                </td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">{nh.beds ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="flex gap-4 text-sm">
+      <a href="/nursing-homes/staffing-rankings" class="text-[var(--color-primary)] hover:underline">&larr; National Rankings</a>
+      <a href={`/nursing-homes/${stateParam.toLowerCase()}`} class="text-[var(--color-primary)] hover:underline">All {stateName} Nursing Homes &rarr;</a>
+    </div>
+
+    <p class="text-xs text-[var(--color-text-secondary)] mt-8">
+      Source: CMS Provider Data Catalog — Nursing Home Provider Information (Feb 2026).
+      RN hours per resident per day is a CMS-reported metric based on payroll data.
+    </p>
+  </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://plaindoctor.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Nursing Homes", "item": "https://plaindoctor.com/nursing-homes/" },
+      { "@type": "ListItem", "position": 3, "name": "Staffing Rankings", "item": "https://plaindoctor.com/nursing-homes/staffing-rankings" },
+      { "@type": "ListItem", "position": 4, "name": stateName }
+    ]
+  })} />
+</Base>

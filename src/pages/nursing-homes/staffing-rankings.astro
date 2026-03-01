@@ -1,0 +1,145 @@
+---
+import Base from '../../layouts/Base.astro';
+import {
+  getNursingHomesByStaffing,
+  getNursingHomeStaffingSummaryByState,
+  getNationalStaffingAvg,
+  getStateName,
+  renderStars,
+} from '../../lib/db';
+
+const db = Astro.locals.runtime.env.DB;
+
+const [topHomes, stateSummaries, nationalAvg] = await Promise.all([
+  getNursingHomesByStaffing(db, 100),
+  getNursingHomeStaffingSummaryByState(db),
+  getNationalStaffingAvg(db),
+]);
+
+const title = 'Nursing Home Staffing Rankings — Top 100 by RN Hours | PlainDoctor';
+const description = `National ranking of nursing homes by RN staffing hours per resident per day. National average: ${nationalAvg.avg_rn} hours. Compare facilities by staffing quality.`;
+
+function ratingColor(r: number | null): string {
+  if (r == null) return 'text-[var(--color-text-secondary)]';
+  if (r >= 4) return 'text-emerald-500';
+  if (r >= 3) return 'text-amber-500';
+  return 'text-amber-600 dark:text-amber-400';
+}
+---
+
+<Base
+  title={title}
+  description={description}
+  breadcrumbs={[
+    { name: 'Home', href: '/' },
+    { name: 'Nursing Homes', href: '/nursing-homes' },
+    { name: 'Staffing Rankings' },
+  ]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Nursing Home Staffing Rankings</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      Top 100 nursing homes by RN hours per resident per day. National average: <strong class="text-[var(--color-text)]">{nationalAvg.avg_rn} hours</strong>. Higher staffing levels are associated with better patient outcomes.
+    </p>
+
+    <!-- National Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{nationalAvg.avg_rn}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Avg RN Hours/Resident/Day</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{nationalAvg.avg_rating}/5</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Avg Staffing Rating</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{stateSummaries.length}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">States with Data</div>
+      </div>
+    </div>
+
+    <!-- Top 100 Table -->
+    <h2 class="text-xl font-semibold mb-4">Top 100 Facilities by RN Hours</h2>
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden mb-10">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-[var(--color-border)]/30">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">#</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Facility</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">State</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">RN Hours</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Staffing Rating</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Overall</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--color-border)]">
+            {topHomes.map((nh, i) => (
+              <tr class="hover:bg-[var(--color-surface)] transition-colors">
+                <td class="px-4 py-2.5 text-[var(--color-text-secondary)]">{i + 1}</td>
+                <td class="px-4 py-2.5">
+                  <a href={`/nursing-home/${nh.slug}`} class="text-[var(--color-primary)] hover:underline font-medium">
+                    {nh.name}
+                  </a>
+                  {nh.city && <span class="text-xs text-[var(--color-text-secondary)] ml-1">{nh.city}</span>}
+                </td>
+                <td class="px-4 py-2.5">{nh.state}</td>
+                <td class="px-4 py-2.5 text-right font-semibold tabular-nums">{nh.rn_hours!.toFixed(2)}</td>
+                <td class="px-4 py-2.5 text-right">
+                  <span class={ratingColor(nh.staffing_rating)}>{nh.staffing_rating != null ? `${nh.staffing_rating}/5` : 'N/A'}</span>
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                  <span class={ratingColor(nh.overall_rating)}>{nh.overall_rating != null ? `${nh.overall_rating}/5` : 'N/A'}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- State Staffing Summary -->
+    <h2 class="text-xl font-semibold mb-4">Staffing by State</h2>
+    <p class="text-sm text-[var(--color-text-secondary)] mb-4">
+      Average RN hours per resident per day by state. Click a state for detailed facility rankings.
+    </p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-10">
+      {stateSummaries.map(s => (
+        <a
+          href={`/nursing-homes/${s.state.toLowerCase()}/staffing`}
+          class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors"
+        >
+          <div class="flex justify-between items-start mb-1">
+            <span class="font-semibold">{getStateName(s.state)}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+              {s.home_count}
+            </span>
+          </div>
+          <div class="text-sm text-[var(--color-text-secondary)]">
+            Avg RN: <strong class="text-[var(--color-text)]">{s.avg_rn_hours}</strong> hrs
+            · Rating: {s.avg_staffing_rating}/5
+          </div>
+          <div class="text-xs text-[var(--color-text-secondary)] mt-1">
+            {s.pct_4plus}% rated 4+ stars
+          </div>
+        </a>
+      ))}
+    </div>
+
+    <p class="text-xs text-[var(--color-text-secondary)]">
+      Source: CMS Provider Data Catalog — Nursing Home Provider Information (Feb 2026).
+      RN hours per resident per day is a CMS-reported metric based on payroll data.
+      This is not medical advice.
+    </p>
+  </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://plaindoctor.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Nursing Homes", "item": "https://plaindoctor.com/nursing-homes/" },
+      { "@type": "ListItem", "position": 3, "name": "Staffing Rankings" }
+    ]
+  })} />
+</Base>

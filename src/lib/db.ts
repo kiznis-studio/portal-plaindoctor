@@ -299,3 +299,63 @@ export function renderStars(rating: number | null): string {
   if (rating == null) return 'N/A';
   return '★'.repeat(rating) + '☆'.repeat(5 - rating);
 }
+
+// --- Nursing Home Staffing Rankings ---
+
+export async function getNursingHomesByStaffing(
+  db: D1Database, limit = 100, offset = 0
+): Promise<NursingHome[]> {
+  const { results } = await db.prepare(
+    `SELECT * FROM nursing_homes
+     WHERE rn_hours IS NOT NULL AND rn_hours > 0
+     ORDER BY rn_hours DESC
+     LIMIT ? OFFSET ?`
+  ).bind(limit, offset).all<NursingHome>();
+  return results;
+}
+
+export async function getNursingHomeStaffingByState(
+  db: D1Database, state: string, limit = 50, offset = 0
+): Promise<NursingHome[]> {
+  const { results } = await db.prepare(
+    `SELECT * FROM nursing_homes
+     WHERE state = ? AND rn_hours IS NOT NULL AND rn_hours > 0
+     ORDER BY rn_hours DESC
+     LIMIT ? OFFSET ?`
+  ).bind(state, limit, offset).all<NursingHome>();
+  return results;
+}
+
+export interface StaffingSummary {
+  state: string;
+  home_count: number;
+  avg_rn_hours: number;
+  avg_staffing_rating: number;
+  pct_4plus: number;
+}
+
+export async function getNursingHomeStaffingSummaryByState(
+  db: D1Database
+): Promise<StaffingSummary[]> {
+  const { results } = await db.prepare(
+    `SELECT
+       state,
+       COUNT(*) as home_count,
+       ROUND(AVG(rn_hours), 3) as avg_rn_hours,
+       ROUND(AVG(staffing_rating), 1) as avg_staffing_rating,
+       ROUND(100.0 * SUM(CASE WHEN staffing_rating >= 4 THEN 1 ELSE 0 END) / COUNT(*), 1) as pct_4plus
+     FROM nursing_homes
+     WHERE rn_hours IS NOT NULL
+     GROUP BY state
+     ORDER BY avg_rn_hours DESC`
+  ).all<StaffingSummary>();
+  return results;
+}
+
+export async function getNationalStaffingAvg(db: D1Database): Promise<{ avg_rn: number; avg_rating: number }> {
+  const row = await db.prepare(
+    `SELECT ROUND(AVG(rn_hours), 3) as avg_rn, ROUND(AVG(staffing_rating), 1) as avg_rating
+     FROM nursing_homes WHERE rn_hours IS NOT NULL`
+  ).first<{ avg_rn: number; avg_rating: number }>();
+  return row ?? { avg_rn: 0, avg_rating: 0 };
+}
