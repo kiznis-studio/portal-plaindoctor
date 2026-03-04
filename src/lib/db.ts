@@ -3,6 +3,16 @@
 
 import precomputed from '../data/precomputed.json';
 
+// Targeted query cache for expensive SHARED queries only.
+// Caches specialty-level, state-level, and global aggregations.
+// Permanent — data is static, container restart = cache invalidation.
+const queryCache = new Map<string, any>();
+export function getQueryCacheSize(): number { return queryCache.size; }
+function cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
+  if (queryCache.has(key)) return Promise.resolve(queryCache.get(key) as T);
+  return compute().then(result => { queryCache.set(key, result); return result; });
+}
+
 // --- Interfaces ---
 
 export interface Provider {
@@ -144,11 +154,13 @@ export async function getTopSpecialties(_db: D1Database, limit = 20): Promise<Sp
   return (precomputed.specialties as Specialty[]).slice(0, limit);
 }
 
-export async function getSpecialtyStates(db: D1Database, specialtyCode: string): Promise<SpecialtyState[]> {
-  const { results } = await db.prepare(
-    'SELECT * FROM specialty_state WHERE specialty_code = ? ORDER BY provider_count DESC'
-  ).bind(specialtyCode).all<SpecialtyState>();
-  return results;
+export function getSpecialtyStates(db: D1Database, specialtyCode: string): Promise<SpecialtyState[]> {
+  return cached(`spec-states:${specialtyCode}`, async () => {
+    const { results } = await db.prepare(
+      'SELECT * FROM specialty_state WHERE specialty_code = ? ORDER BY provider_count DESC'
+    ).bind(specialtyCode).all<SpecialtyState>();
+    return results;
+  });
 }
 
 // --- States ---
@@ -163,11 +175,13 @@ export async function getStateBySlug(db: D1Database, slug: string): Promise<Stat
 
 // --- Cities ---
 
-export async function getCitiesByState(db: D1Database, state: string, limit = 50): Promise<CityInfo[]> {
-  const { results } = await db.prepare(
-    'SELECT * FROM cities WHERE state = ? ORDER BY provider_count DESC LIMIT ?'
-  ).bind(state, limit).all<CityInfo>();
-  return results;
+export function getCitiesByState(db: D1Database, state: string, limit = 50): Promise<CityInfo[]> {
+  return cached(`cities:${state}:${limit}`, async () => {
+    const { results } = await db.prepare(
+      'SELECT * FROM cities WHERE state = ? ORDER BY provider_count DESC LIMIT ?'
+    ).bind(state, limit).all<CityInfo>();
+    return results;
+  });
 }
 
 // --- Search ---
@@ -201,17 +215,19 @@ export interface SpecialtyStateRow {
   provider_count: number;
 }
 
-export async function getSpecialtyStateDistribution(
+export function getSpecialtyStateDistribution(
   db: D1Database, specialtyCode: string
 ): Promise<Map<string, number>> {
-  const { results } = await db.prepare(
-    'SELECT state, provider_count FROM specialty_state WHERE specialty_code = ? ORDER BY provider_count DESC'
-  ).bind(specialtyCode).all<{ state: string; provider_count: number }>();
-  const map = new Map<string, number>();
-  for (const row of results) {
-    map.set(row.state, row.provider_count);
-  }
-  return map;
+  return cached(`spec-dist:${specialtyCode}`, async () => {
+    const { results } = await db.prepare(
+      'SELECT state, provider_count FROM specialty_state WHERE specialty_code = ? ORDER BY provider_count DESC'
+    ).bind(specialtyCode).all<{ state: string; provider_count: number }>();
+    const map = new Map<string, number>();
+    for (const row of results) {
+      map.set(row.state, row.provider_count);
+    }
+    return map;
+  });
 }
 
 // --- Stats (pre-computed to avoid full table scans on every page load) ---
@@ -292,18 +308,22 @@ export async function getNursingHomeCountByState(db: D1Database, state: string):
   return row?.cnt ?? 0;
 }
 
-export async function getAllNursingHomeStates(db: D1Database): Promise<NursingHomeState[]> {
-  const { results } = await db.prepare(
-    'SELECT * FROM nursing_home_states ORDER BY home_count DESC'
-  ).all<NursingHomeState>();
-  return results;
+export function getAllNursingHomeStates(db: D1Database): Promise<NursingHomeState[]> {
+  return cached('nh-states', async () => {
+    const { results } = await db.prepare(
+      'SELECT * FROM nursing_home_states ORDER BY home_count DESC'
+    ).all<NursingHomeState>();
+    return results;
+  });
 }
 
-export async function getNursingHomeStats(db: D1Database): Promise<{ total: number; states: number; avg_beds: number }> {
-  const row = await db.prepare(
-    'SELECT COUNT(*) as total, COUNT(DISTINCT state) as states, ROUND(AVG(beds)) as avg_beds FROM nursing_homes'
-  ).first<{ total: number; states: number; avg_beds: number }>();
-  return row ?? { total: 0, states: 0, avg_beds: 0 };
+export function getNursingHomeStats(db: D1Database): Promise<{ total: number; states: number; avg_beds: number }> {
+  return cached('nh-stats', async () => {
+    const row = await db.prepare(
+      'SELECT COUNT(*) as total, COUNT(DISTINCT state) as states, ROUND(AVG(beds)) as avg_beds FROM nursing_homes'
+    ).first<{ total: number; states: number; avg_beds: number }>();
+    return row ?? { total: 0, states: 0, avg_beds: 0 };
+  });
 }
 
 export function renderStars(rating: number | null): string {
@@ -313,16 +333,27 @@ export function renderStars(rating: number | null): string {
 
 // --- Nursing Home Staffing Rankings ---
 
-export async function getNursingHomesByStaffing(
+export function getNursingHomesByStaffing(
   db: D1Database, limit = 100, offset = 0
 ): Promise<NursingHome[]> {
-  const { results } = await db.prepare(
-    `SELECT * FROM nursing_homes
-     WHERE rn_hours IS NOT NULL AND rn_hours > 0
-     ORDER BY rn_hours DESC
-     LIMIT ? OFFSET ?`
-  ).bind(limit, offset).all<NursingHome>();
-  return results;
+  if (offset === 0) return cached(`nh-staffing:${limit}`, async () => {
+    const { results } = await db.prepare(
+      `SELECT * FROM nursing_homes
+       WHERE rn_hours IS NOT NULL AND rn_hours > 0
+       ORDER BY rn_hours DESC
+       LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all<NursingHome>();
+    return results;
+  });
+  return (async () => {
+    const { results } = await db.prepare(
+      `SELECT * FROM nursing_homes
+       WHERE rn_hours IS NOT NULL AND rn_hours > 0
+       ORDER BY rn_hours DESC
+       LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all<NursingHome>();
+    return results;
+  })();
 }
 
 export async function getNursingHomeStaffingByState(
@@ -345,44 +376,59 @@ export interface StaffingSummary {
   pct_4plus: number;
 }
 
-export async function getNursingHomeStaffingSummaryByState(
+export function getNursingHomeStaffingSummaryByState(
   db: D1Database
 ): Promise<StaffingSummary[]> {
-  const { results } = await db.prepare(
-    `SELECT
-       state,
-       COUNT(*) as home_count,
-       ROUND(AVG(rn_hours), 3) as avg_rn_hours,
-       ROUND(AVG(staffing_rating), 1) as avg_staffing_rating,
-       ROUND(100.0 * SUM(CASE WHEN staffing_rating >= 4 THEN 1 ELSE 0 END) / COUNT(*), 1) as pct_4plus
-     FROM nursing_homes
-     WHERE rn_hours IS NOT NULL
-     GROUP BY state
-     ORDER BY avg_rn_hours DESC`
-  ).all<StaffingSummary>();
-  return results;
+  return cached('nh-staffing-summary', async () => {
+    const { results } = await db.prepare(
+      `SELECT
+         state,
+         COUNT(*) as home_count,
+         ROUND(AVG(rn_hours), 3) as avg_rn_hours,
+         ROUND(AVG(staffing_rating), 1) as avg_staffing_rating,
+         ROUND(100.0 * SUM(CASE WHEN staffing_rating >= 4 THEN 1 ELSE 0 END) / COUNT(*), 1) as pct_4plus
+       FROM nursing_homes
+       WHERE rn_hours IS NOT NULL
+       GROUP BY state
+       ORDER BY avg_rn_hours DESC`
+    ).all<StaffingSummary>();
+    return results;
+  });
 }
 
-export async function getNationalStaffingAvg(db: D1Database): Promise<{ avg_rn: number; avg_rating: number }> {
-  const row = await db.prepare(
-    `SELECT ROUND(AVG(rn_hours), 3) as avg_rn, ROUND(AVG(staffing_rating), 1) as avg_rating
-     FROM nursing_homes WHERE rn_hours IS NOT NULL`
-  ).first<{ avg_rn: number; avg_rating: number }>();
-  return row ?? { avg_rn: 0, avg_rating: 0 };
+export function getNationalStaffingAvg(db: D1Database): Promise<{ avg_rn: number; avg_rating: number }> {
+  return cached('nh-national-staffing', async () => {
+    const row = await db.prepare(
+      `SELECT ROUND(AVG(rn_hours), 3) as avg_rn, ROUND(AVG(staffing_rating), 1) as avg_rating
+       FROM nursing_homes WHERE rn_hours IS NOT NULL`
+    ).first<{ avg_rn: number; avg_rating: number }>();
+    return row ?? { avg_rn: 0, avg_rating: 0 };
+  });
 }
 
 // --- Nursing Home Deficiency Inspector ---
 
-export async function getNursingHomesByDeficiencies(
+export function getNursingHomesByDeficiencies(
   db: D1Database, limit = 100, offset = 0
 ): Promise<NursingHome[]> {
-  const { results } = await db.prepare(
-    `SELECT * FROM nursing_homes
-     WHERE total_deficiencies IS NOT NULL
-     ORDER BY total_deficiencies DESC
-     LIMIT ? OFFSET ?`
-  ).bind(limit, offset).all<NursingHome>();
-  return results;
+  if (offset === 0) return cached(`nh-deficiencies:${limit}`, async () => {
+    const { results } = await db.prepare(
+      `SELECT * FROM nursing_homes
+       WHERE total_deficiencies IS NOT NULL
+       ORDER BY total_deficiencies DESC
+       LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all<NursingHome>();
+    return results;
+  });
+  return (async () => {
+    const { results } = await db.prepare(
+      `SELECT * FROM nursing_homes
+       WHERE total_deficiencies IS NOT NULL
+       ORDER BY total_deficiencies DESC
+       LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all<NursingHome>();
+    return results;
+  })();
 }
 
 export async function getNursingHomeDeficienciesByState(
@@ -407,36 +453,40 @@ export interface DeficiencySummary {
   avg_infection_citations: number;
 }
 
-export async function getDeficiencySummaryByState(
+export function getDeficiencySummaryByState(
   db: D1Database
 ): Promise<DeficiencySummary[]> {
-  const { results } = await db.prepare(
-    `SELECT
-       state,
-       COUNT(*) as home_count,
-       ROUND(AVG(total_deficiencies), 1) as avg_deficiencies,
-       ROUND(AVG(health_rating), 1) as avg_health_rating,
-       ROUND(SUM(COALESCE(fine_amount, 0))) as total_fines,
-       ROUND(100.0 * SUM(CASE WHEN complaint_deficiencies > 0 THEN 1 ELSE 0 END) / COUNT(*), 1) as pct_with_complaints,
-       ROUND(AVG(COALESCE(infection_citations, 0)), 1) as avg_infection_citations
-     FROM nursing_homes
-     WHERE total_deficiencies IS NOT NULL
-     GROUP BY state
-     ORDER BY avg_deficiencies DESC`
-  ).all<DeficiencySummary>();
-  return results;
+  return cached('nh-deficiency-summary', async () => {
+    const { results } = await db.prepare(
+      `SELECT
+         state,
+         COUNT(*) as home_count,
+         ROUND(AVG(total_deficiencies), 1) as avg_deficiencies,
+         ROUND(AVG(health_rating), 1) as avg_health_rating,
+         ROUND(SUM(COALESCE(fine_amount, 0))) as total_fines,
+         ROUND(100.0 * SUM(CASE WHEN complaint_deficiencies > 0 THEN 1 ELSE 0 END) / COUNT(*), 1) as pct_with_complaints,
+         ROUND(AVG(COALESCE(infection_citations, 0)), 1) as avg_infection_citations
+       FROM nursing_homes
+       WHERE total_deficiencies IS NOT NULL
+       GROUP BY state
+       ORDER BY avg_deficiencies DESC`
+    ).all<DeficiencySummary>();
+    return results;
+  });
 }
 
-export async function getNationalDeficiencyAvg(
+export function getNationalDeficiencyAvg(
   db: D1Database
 ): Promise<{ avg_deficiencies: number; avg_score: number; avg_fines: number; total_with_abuse: number }> {
-  const row = await db.prepare(
-    `SELECT
-       ROUND(AVG(total_deficiencies), 1) as avg_deficiencies,
-       ROUND(AVG(deficiency_score), 0) as avg_score,
-       ROUND(AVG(COALESCE(fine_amount, 0)), 0) as avg_fines,
-       SUM(CASE WHEN abuse_icon = 1 THEN 1 ELSE 0 END) as total_with_abuse
-     FROM nursing_homes WHERE total_deficiencies IS NOT NULL`
-  ).first<{ avg_deficiencies: number; avg_score: number; avg_fines: number; total_with_abuse: number }>();
-  return row ?? { avg_deficiencies: 0, avg_score: 0, avg_fines: 0, total_with_abuse: 0 };
+  return cached('nh-national-deficiency', async () => {
+    const row = await db.prepare(
+      `SELECT
+         ROUND(AVG(total_deficiencies), 1) as avg_deficiencies,
+         ROUND(AVG(deficiency_score), 0) as avg_score,
+         ROUND(AVG(COALESCE(fine_amount, 0)), 0) as avg_fines,
+         SUM(CASE WHEN abuse_icon = 1 THEN 1 ELSE 0 END) as total_with_abuse
+       FROM nursing_homes WHERE total_deficiencies IS NOT NULL`
+    ).first<{ avg_deficiencies: number; avg_score: number; avg_fines: number; total_with_abuse: number }>();
+    return row ?? { avg_deficiencies: 0, avg_score: 0, avg_fines: 0, total_with_abuse: 0 };
+  });
 }
