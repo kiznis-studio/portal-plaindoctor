@@ -64,8 +64,8 @@ const faqSchema = JSON.stringify({
 ---
 
 <Base
-  title={`${fullName} — ${provider.specialty} in ${provider.city}, ${provider.state}`}
-  description={`${fullName} is a ${provider.specialty} provider in ${provider.city}, ${stateName}. NPI: ${provider.npi}. View practice address and contact information.`}
+  title={`${fullName}${provider.credential ? `, ${provider.credential}` : ''} — ${provider.specialty}, ${provider.city}, ${provider.state}`}
+  description={`${fullName} is a ${provider.specialty} provider in ${provider.city}, ${stateName}. ${provider.credential ? `Credentials: ${provider.credential}. ` : ''}NPI: ${provider.npi}. CMS NPPES data with practice address and contact info.`}
   breadcrumbs={[
     { name: 'Home', href: '/' },
     { name: stateName, href: `/state/${stateName.toLowerCase().replace(/\s+/g, '-')}` },
