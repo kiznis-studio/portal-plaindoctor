@@ -26,10 +26,10 @@ const lagInterval = setInterval(() => {
 }, 1000);
 lagInterval.unref();
 
-// --- In-memory response cache (permanent, 1500 entries) ---
+// --- In-memory response cache (permanent, 500 entries) ---
 // Data is static between DB updates. Container restart = cache invalidation.
 const responseCache = new Map<string, { body: string; headers: Record<string, string> }>();
-const MAX_CACHE_ENTRIES = 1500;
+const MAX_CACHE_ENTRIES = 500;
 
 function getCachedResponse(key: string): Response | null {
   const entry = responseCache.get(key);
