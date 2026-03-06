@@ -184,6 +184,31 @@ export function getCitiesByState(db: D1Database, state: string, limit = 50): Pro
   });
 }
 
+export async function getCityBySlug(db: D1Database, slug: string): Promise<CityInfo | null> {
+  return db.prepare('SELECT * FROM cities WHERE slug = ?').bind(slug).first<CityInfo>();
+}
+
+export async function getProvidersByCity(
+  db: D1Database, city: string, state: string, limit = 50, offset = 0
+): Promise<Provider[]> {
+  const { results } = await db.prepare(
+    'SELECT * FROM providers WHERE city = ? AND state = ? ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE LIMIT ? OFFSET ?'
+  ).bind(city, state, limit, offset).all<Provider>();
+  return results;
+}
+
+export async function getCitySpecialties(
+  db: D1Database, city: string, state: string, limit = 20
+): Promise<{ specialty: string; specialty_code: string; count: number }[]> {
+  const { results } = await db.prepare(
+    `SELECT specialty, specialty_code, COUNT(*) as count FROM providers
+     WHERE city = ? AND state = ?
+     GROUP BY specialty_code
+     ORDER BY count DESC LIMIT ?`
+  ).bind(city, state, limit).all<{ specialty: string; specialty_code: string; count: number }>();
+  return results;
+}
+
 // --- Search ---
 
 export async function searchProviders(db: D1Database, query: string, limit = 20): Promise<Provider[]> {

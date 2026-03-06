@@ -1,0 +1,175 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCityBySlug, getProvidersByCity, getCitySpecialties, getStateName, formatProviderName, STATE_POPULATIONS } from '../../lib/db';
+
+const { slug } = Astro.params;
+const db = Astro.locals.runtime.env.DB;
+
+const city = await getCityBySlug(db, slug!);
+if (!city) return Astro.redirect('/404');
+
+const page = Math.max(1, parseInt(Astro.url.searchParams.get('page') || '1'));
+const perPage = 50;
+
+const [providers, specialties] = await Promise.all([
+  getProvidersByCity(db, city.city, city.state, perPage, (page - 1) * perPage),
+  getCitySpecialties(db, city.city, city.state),
+]);
+
+const totalPages = Math.ceil(city.provider_count / perPage);
+const stateName = getStateName(city.state);
+const cityName = city.city.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+const stateSlug = stateName.toLowerCase().replace(/\s+/g, '-');
+const statePop = STATE_POPULATIONS[city.state];
+const perCapita = statePop ? Math.round(city.provider_count / (statePop / 100000) * 10) / 10 : null;
+
+const faqItems = [
+  {
+    q: `How many doctors are in ${cityName}, ${city.state}?`,
+    a: `There are ${city.provider_count.toLocaleString()} registered healthcare providers in ${cityName}, ${city.state}, covering ${specialties.length} specialties. This includes physicians, dentists, therapists, and other licensed providers.`,
+  },
+  {
+    q: `What are the most common medical specialties in ${cityName}?`,
+    a: specialties.length > 0
+      ? `The most common specialties in ${cityName} are ${specialties.slice(0, 5).map(s => s.specialty).join(', ')}. ${specialties[0].specialty} has the most providers with ${specialties[0].count.toLocaleString()}.`
+      : `Specialty data is not yet available for ${cityName}.`,
+  },
+];
+
+const faqSchema = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqItems.map(f => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+});
+---
+
+<Base
+  title={`Doctors in ${cityName}, ${city.state} — ${city.provider_count.toLocaleString()} Healthcare Providers`}
+  description={`Find ${city.provider_count.toLocaleString()} healthcare providers in ${cityName}, ${stateName}. Browse doctors, dentists, therapists, and specialists by name or specialty. Free directory from CMS NPPES data.`}
+  breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'States', href: '/state' }, { name: stateName, href: `/state/${stateSlug}` }, { name: cityName }]}
+>
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Doctors in {cityName}, {city.state}</h1>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      {city.provider_count.toLocaleString()} healthcare providers across {specialties.length} specialties
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{city.provider_count.toLocaleString()}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Providers</div>
+      </div>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-[var(--color-primary)]">{specialties.length}</div>
+        <div class="text-sm text-[var(--color-text-secondary)]">Specialties</div>
+      </div>
+      {perCapita && (
+        <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 text-center">
+          <div class="text-2xl font-bold text-[var(--color-primary)]">{perCapita}</div>
+          <div class="text-sm text-[var(--color-text-secondary)]">Per 100K (state)</div>
+        </div>
+      )}
+    </div>
+
+    {specialties.length > 0 && (
+      <div class="mb-10">
+        <h2 class="text-xl font-semibold mb-4">Top Specialties in {cityName}</h2>
+        <div class="grid sm:grid-cols-2 gap-2">
+          {specialties.map(s => (
+            <div class="flex items-center justify-between px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm">
+              <span class="truncate mr-2">{s.specialty}</span>
+              <span class="text-[var(--color-text-secondary)] whitespace-nowrap">{s.count.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <h2 class="text-xl font-semibold mb-4">
+      Healthcare Providers {page > 1 ? `(Page ${page})` : ''}
+    </h2>
+
+    {providers.length > 0 ? (
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden mb-8">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-[var(--color-border)]/30">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Name</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase hidden sm:table-cell">Specialty</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase hidden md:table-cell">Phone</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[var(--color-border)]">
+              {providers.map(p => (
+                <tr class="hover:bg-[var(--color-surface)] transition-colors">
+                  <td class="px-4 py-2.5">
+                    <a href={`/provider/${p.slug}`} class="text-[var(--color-primary)] hover:underline font-medium">
+                      {formatProviderName(p)}
+                    </a>
+                    <div class="text-xs text-[var(--color-text-secondary)] sm:hidden">{p.specialty}</div>
+                  </td>
+                  <td class="px-4 py-2.5 text-[var(--color-text-secondary)] hidden sm:table-cell">{p.specialty}</td>
+                  <td class="px-4 py-2.5 text-[var(--color-text-secondary)] hidden md:table-cell">{p.phone || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ) : (
+      <p class="text-[var(--color-text-secondary)]">No providers found for this page.</p>
+    )}
+
+    {totalPages > 1 && (
+      <nav class="flex items-center justify-center gap-2 mb-10">
+        {page > 1 && (
+          <a href={`/city/${slug}${page === 2 ? '' : `?page=${page - 1}`}`} class="px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] text-sm transition-colors">&larr; Previous</a>
+        )}
+        <span class="text-sm text-[var(--color-text-secondary)]">Page {page} of {totalPages}</span>
+        {page < totalPages && (
+          <a href={`/city/${slug}?page=${page + 1}`} class="px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] text-sm transition-colors">Next &rarr;</a>
+        )}
+      </nav>
+    )}
+
+    {faqItems.length > 0 && (
+      <div class="mb-10">
+        <h2 class="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
+        <div class="space-y-3">
+          {faqItems.map(f => (
+            <details class="group border border-[var(--color-border)] rounded-lg">
+              <summary class="flex items-center justify-between p-4 cursor-pointer text-[var(--color-text)] font-medium">
+                {f.q}
+                <svg class="w-5 h-5 shrink-0 ml-2 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+              </summary>
+              <div class="px-4 pb-4 text-sm text-[var(--color-text-secondary)]">{f.a}</div>
+            </details>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- Cross-Portal Links -->
+    <div class="mt-10 pt-6 border-t border-[var(--color-border)]">
+      <h3 class="text-sm font-semibold uppercase tracking-wider mb-3">Explore More Data</h3>
+      <div class="flex flex-wrap gap-2">
+        <a href={`https://plainrent.com/states/${stateSlug}`} class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors" target="_blank" rel="noopener">Rent Data →</a>
+        <a href={`https://plaincrime.com/states/${stateSlug}`} class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors" target="_blank" rel="noopener">Crime Stats →</a>
+        <a href={`https://plainschools.com/states/${stateSlug}`} class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors" target="_blank" rel="noopener">Schools →</a>
+        <a href={`https://plainhospital.com/state/${stateSlug}`} class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors" target="_blank" rel="noopener">Hospitals →</a>
+      </div>
+    </div>
+
+    <div class="mt-8 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-secondary)]">
+      <p>Data from CMS NPPES. PlainDoctor does not rate or rank providers. <a href="/about" class="text-[var(--color-primary)] hover:underline">Learn more</a></p>
+    </div>
+  </section>
+
+  <script type="application/ld+json" set:html={faqSchema} />
+</Base>

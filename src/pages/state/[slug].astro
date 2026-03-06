@@ -67,10 +67,10 @@ const { results: stateSpecialties } = await db.prepare(`
         <h2 class="text-xl font-semibold mb-4">Top Cities</h2>
         <div class="space-y-2">
           {cities.map(c => (
-            <div class="flex items-center justify-between px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm">
-              <span>{c.city}</span>
+            <a href={`/city/${c.slug}`} class="flex items-center justify-between px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)] transition-colors text-sm">
+              <span>{c.city.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}</span>
               <span class="text-[var(--color-text-secondary)]">{c.provider_count.toLocaleString()} providers</span>
-            </div>
+            </a>
           ))}
         </div>
       </div>
