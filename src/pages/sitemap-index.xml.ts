@@ -11,6 +11,7 @@ export const GET: APIRoute = async ({ locals }) => {
   const providerPages = Math.ceil(totalProviders / 50000);
 
   const sitemaps = [
+    `${BASE}/sitemap-providers-priority.xml`,
     `${BASE}/sitemap-static.xml`,
     `${BASE}/sitemap-states.xml`,
     `${BASE}/sitemap-specialties.xml`,
