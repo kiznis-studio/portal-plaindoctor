@@ -163,6 +163,25 @@ export function getSpecialtyStates(db: D1Database, specialtyCode: string): Promi
   });
 }
 
+// --- Top Cities by Specialty ---
+
+export function getTopCitiesBySpecialty(
+  db: D1Database, specialtyCode: string, limit = 20
+): Promise<{ city: string; state: string; slug: string; count: number }[]> {
+  return cached(`spec-cities:${specialtyCode}:${limit}`, async () => {
+    const { results } = await db.prepare(
+      `SELECT p.city, p.state, c.slug, COUNT(*) as count
+       FROM providers p
+       JOIN cities c ON c.city = p.city AND c.state = p.state
+       WHERE p.specialty_code = ?
+       GROUP BY p.city, p.state
+       ORDER BY count DESC
+       LIMIT ?`
+    ).bind(specialtyCode, limit).all();
+    return results as { city: string; state: string; slug: string; count: number }[];
+  });
+}
+
 // --- States ---
 
 export async function getAllStates(_db: D1Database): Promise<StateInfo[]> {

@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getSpecialtyBySlug, getSpecialtyStates, getStateName, formatNumber } from '../../lib/db';
+import { getSpecialtyBySlug, getSpecialtyStates, getTopCitiesBySpecialty, getStateName, formatNumber } from '../../lib/db';
 
 const { slug } = Astro.params;
 const db = Astro.locals.runtime.env.DB;
@@ -11,7 +11,10 @@ if (!specialty) {
   return Astro.redirect('/404');
 }
 
-const states = await getSpecialtyStates(db, specialty.code);
+const [states, topCities] = await Promise.all([
+  getSpecialtyStates(db, specialty.code),
+  getTopCitiesBySpecialty(db, specialty.code),
+]);
 const totalProviders = states.reduce((sum, s) => sum + s.provider_count, 0);
 ---
 
@@ -73,6 +76,36 @@ const totalProviders = states.reduce((sum, s) => sum + s.provider_count, 0);
         </tbody>
       </table>
     </div>
+
+    {topCities.length > 0 && (
+      <h2 class="text-xl font-semibold mb-4 mt-10">Top Cities for {specialty.name}</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--color-border)]">
+              <th class="text-left py-3 px-3 font-medium">City</th>
+              <th class="text-left py-3 px-3 font-medium hidden sm:table-cell">State</th>
+              <th class="text-right py-3 px-3 font-medium">Providers</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topCities.map(c => (
+              <tr class="border-b border-[var(--color-border)] hover:bg-[var(--color-surface)]">
+                <td class="py-2 px-3">
+                  <a href={`/city/${c.slug}`} class="text-[var(--color-primary)] hover:underline">
+                    {c.city.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
+                  </a>
+                </td>
+                <td class="py-2 px-3 hidden sm:table-cell text-[var(--color-text-secondary)]">
+                  {getStateName(c.state)}
+                </td>
+                <td class="py-2 px-3 text-right font-mono">{c.count.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
 
     <!-- Cross-Portal Links -->
     <div class="mt-10 pt-6 border-t border-[var(--color-border)]">

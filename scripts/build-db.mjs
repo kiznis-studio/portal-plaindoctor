@@ -421,9 +421,19 @@ async function main() {
     'CREATE INDEX idx_cities_slug ON cities(slug)',
     'CREATE INDEX idx_specialty_state_spec ON specialty_state(specialty_code)',
     'CREATE INDEX idx_specialty_state_state ON specialty_state(state)',
+    'CREATE INDEX IF NOT EXISTS idx_providers_speccode_state ON providers(specialty_code, state)',
   ];
   for (const idx of indices) {
     db.prepare(idx).run();
+  }
+
+  // Composite indexes for nursing_homes (table created by import-nursing-homes script)
+  const nhTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='nursing_homes'").get();
+  if (nhTable) {
+    console.log('Adding nursing_homes composite indexes...');
+    db.prepare('CREATE INDEX IF NOT EXISTS idx_nh_state_rating ON nursing_homes(state, overall_rating DESC, beds DESC)').run();
+    db.prepare('CREATE INDEX IF NOT EXISTS idx_nh_state_rn ON nursing_homes(state, rn_hours DESC)').run();
+    db.prepare('CREATE INDEX IF NOT EXISTS idx_nh_state_deficiencies ON nursing_homes(state, total_deficiencies DESC)').run();
   }
 
   // Create _stats table with pre-computed aggregate values
@@ -443,6 +453,12 @@ async function main() {
     insertStat.run(key, String(val));
     console.log(`  ${key} = ${val}`);
   }
+
+  console.log('\nFinalizing database...');
+  db.prepare('ANALYZE').run();
+  db.pragma('journal_mode = DELETE');
+  db.prepare('VACUUM').run();
+  console.log('Finalized (ANALYZE + journal_mode=DELETE + VACUUM)');
 
   db.close();
 
