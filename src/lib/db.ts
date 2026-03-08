@@ -534,3 +534,17 @@ export function getNationalDeficiencyAvg(
     return row ?? { avg_deficiencies: 0, avg_score: 0, avg_fines: 0, total_with_abuse: 0 };
   });
 }
+
+export async function warmQueryCache(db: D1Database): Promise<number> {
+  const start = Date.now();
+  await Promise.all([
+    getAllNursingHomeStates(db),
+    getNursingHomeStats(db),
+    getNursingHomeStaffingSummaryByState(db),
+    getNationalStaffingAvg(db),
+    getDeficiencySummaryByState(db),
+    getNationalDeficiencyAvg(db),
+  ]);
+  console.log(`[cache] Warmed ${queryCache.size} queries in ${Date.now() - start}ms`);
+  return queryCache.size;
+}
