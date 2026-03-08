@@ -170,13 +170,17 @@ export function getTopCitiesBySpecialty(
 ): Promise<{ city: string; state: string; slug: string; count: number }[]> {
   return cached(`spec-cities:${specialtyCode}:${limit}`, async () => {
     const { results } = await db.prepare(
-      `SELECT p.city, p.state, c.slug, COUNT(*) as count
-       FROM providers p
-       JOIN cities c ON c.city = p.city AND c.state = p.state
-       WHERE p.specialty_code = ?
-       GROUP BY p.city, p.state
-       ORDER BY count DESC
-       LIMIT ?`
+      `SELECT agg.city, agg.state, c.slug, agg.count
+       FROM (
+         SELECT city, state, COUNT(*) as count
+         FROM providers
+         WHERE specialty_code = ?
+         GROUP BY city, state
+         ORDER BY count DESC
+         LIMIT ?
+       ) agg
+       LEFT JOIN cities c ON c.city = agg.city AND c.state = agg.state
+       ORDER BY agg.count DESC`
     ).bind(specialtyCode, limit).all();
     return results as { city: string; state: string; slug: string; count: number }[];
   });
