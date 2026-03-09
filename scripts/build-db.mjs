@@ -422,6 +422,9 @@ async function main() {
     'CREATE INDEX idx_specialty_state_spec ON specialty_state(specialty_code)',
     'CREATE INDEX idx_specialty_state_state ON specialty_state(state)',
     'CREATE INDEX IF NOT EXISTS idx_providers_speccode_state ON providers(specialty_code, state)',
+    // Covering indexes for paginated specialty+state and city listings (slow query fix)
+    'CREATE INDEX IF NOT EXISTS idx_providers_speccode_state_sort ON providers(specialty_code, state, last_name COLLATE NOCASE, first_name COLLATE NOCASE)',
+    'CREATE INDEX IF NOT EXISTS idx_providers_city_state_sort ON providers(city, state, last_name COLLATE NOCASE, first_name COLLATE NOCASE)',
   ];
   for (const idx of indices) {
     db.prepare(idx).run();
