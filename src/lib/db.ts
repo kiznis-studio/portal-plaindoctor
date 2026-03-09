@@ -548,6 +548,8 @@ export async function warmQueryCache(db: D1Database): Promise<number> {
     getNationalStaffingAvg(db),
     getDeficiencySummaryByState(db),
     getNationalDeficiencyAvg(db),
+    getNursingHomesByStaffing(db),
+    getNursingHomesByDeficiencies(db),
   ]);
   console.log(`[cache] Warmed ${queryCache.size} queries in ${Date.now() - start}ms`);
   return queryCache.size;
