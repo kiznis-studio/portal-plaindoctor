@@ -170,17 +170,11 @@ export function getTopCitiesBySpecialty(
 ): Promise<{ city: string; state: string; slug: string; count: number }[]> {
   return cached(`spec-cities:${specialtyCode}:${limit}`, async () => {
     const { results } = await db.prepare(
-      `SELECT agg.city, agg.state, c.slug, agg.count
-       FROM (
-         SELECT city, state, COUNT(*) as count
-         FROM providers
-         WHERE specialty_code = ?
-         GROUP BY city, state
-         ORDER BY count DESC
-         LIMIT ?
-       ) agg
-       LEFT JOIN cities c ON c.city = agg.city AND c.state = agg.state
-       ORDER BY agg.count DESC`
+      `SELECT city, state, city_slug as slug, provider_count as count
+       FROM specialty_top_cities
+       WHERE specialty_code = ?
+       ORDER BY provider_count DESC
+       LIMIT ?`
     ).bind(specialtyCode, limit).all();
     return results as { city: string; state: string; slug: string; count: number }[];
   });
@@ -225,13 +219,32 @@ export function getCitySpecialties(
 ): Promise<{ specialty: string; specialty_code: string; count: number }[]> {
   return cached(`city-specs:${city}:${state}:${limit}`, async () => {
     const { results } = await db.prepare(
-      `SELECT specialty, specialty_code, COUNT(*) as count FROM providers
+      `SELECT specialty, specialty_code, provider_count as count
+       FROM city_top_specialties
        WHERE city = ? AND state = ?
-       GROUP BY specialty_code
-       ORDER BY count DESC LIMIT ?`
+       ORDER BY provider_count DESC LIMIT ?`
     ).bind(city, state, limit).all<{ specialty: string; specialty_code: string; count: number }>();
     return results;
   });
+}
+
+// --- Sitemap Helpers ---
+
+export async function getSitemapPageBoundary(db: D1Database, page: number): Promise<string | null> {
+  const row = await db.prepare('SELECT start_npi FROM sitemap_pages WHERE page = ?').bind(page).first<{ start_npi: string }>();
+  return row?.start_npi ?? null;
+}
+
+export async function getSitemapProviderSlugs(db: D1Database, startNpi: string, limit = 50000): Promise<string[]> {
+  const { results } = await db.prepare(
+    'SELECT slug FROM providers WHERE npi >= ? ORDER BY npi LIMIT ?'
+  ).bind(startNpi, limit).all<{ slug: string }>();
+  return results.map(r => r.slug);
+}
+
+export async function getSitemapPageCount(db: D1Database): Promise<number> {
+  const row = await db.prepare('SELECT MAX(page) as max_page FROM sitemap_pages').first<{ max_page: number }>();
+  return row?.max_page ?? 0;
 }
 
 // --- Search ---

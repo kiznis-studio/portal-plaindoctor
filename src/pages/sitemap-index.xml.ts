@@ -1,14 +1,13 @@
 import type { APIRoute } from 'astro';
+import { getSitemapPageCount } from '../lib/db';
 
 const BASE = 'https://plaindoctor.com';
 
 export const GET: APIRoute = async ({ locals }) => {
   const db = (locals as any).runtime.env.DB;
 
-  // Count total providers for pagination
-  const row = await db.prepare('SELECT COUNT(*) as count FROM providers').first<{ count: number }>();
-  const totalProviders = row?.count || 0;
-  const providerPages = Math.ceil(totalProviders / 50000);
+  // Get page count from pre-computed sitemap_pages table
+  const providerPages = await getSitemapPageCount(db);
 
   const sitemaps = [
     `${BASE}/sitemap-providers-priority.xml`,
