@@ -556,6 +556,8 @@ export function getNationalDeficiencyAvg(
 
 export async function warmQueryCache(db: D1Database): Promise<number> {
   const start = Date.now();
+  const states = await getAllStates(db);
+  const specialties = await getAllSpecialties(db);
   await Promise.all([
     getAllNursingHomeStates(db),
     getNursingHomeStats(db),
@@ -565,6 +567,11 @@ export async function warmQueryCache(db: D1Database): Promise<number> {
     getNationalDeficiencyAvg(db),
     getNursingHomesByStaffing(db),
     getNursingHomesByDeficiencies(db),
+    ...states.map(s => getCitiesByState(db, s.abbr)),
+    ...specialties.map(sp => Promise.all([
+      getSpecialtyStates(db, sp.code),
+      getSpecialtyCities(db, sp.code),
+    ])),
   ]);
   console.log(`[cache] Warmed ${queryCache.size} queries in ${Date.now() - start}ms`);
   return queryCache.size;
