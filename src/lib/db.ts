@@ -305,6 +305,105 @@ export async function getNationalStats(_db: D1Database) {
   };
 }
 
+// --- Part D Prescriber Data (CMS Medicare Part D) ---
+
+export interface PrescriberSummary {
+  npi: string;
+  total_claims: number | null;
+  total_30day_fills: number | null;
+  total_drug_cost: number | null;
+  total_day_supply: number | null;
+  total_beneficiaries: number | null;
+  brand_claims: number | null;
+  brand_cost: number | null;
+  generic_claims: number | null;
+  generic_cost: number | null;
+  opioid_claims: number | null;
+  opioid_cost: number | null;
+  opioid_benes: number | null;
+  opioid_prescriber_rate: number | null;
+  antibiotic_claims: number | null;
+  antibiotic_cost: number | null;
+  bene_avg_age: number | null;
+  bene_age_lt65: number | null;
+  bene_age_65_74: number | null;
+  bene_age_75_84: number | null;
+  bene_age_gt84: number | null;
+  bene_female: number | null;
+  bene_male: number | null;
+  bene_avg_risk_score: number | null;
+}
+
+export async function getPrescriberSummary(db: D1Database, npi: string): Promise<PrescriberSummary | null> {
+  return db.prepare('SELECT * FROM prescriber_summary WHERE npi = ?').bind(npi).first<PrescriberSummary>();
+}
+
+export function getTopPrescribersByCost(db: D1Database, limit = 50): Promise<(PrescriberSummary & { first_name: string; last_name: string; specialty: string; state: string; slug: string })[]> {
+  return cached(`top-prescribers-cost:${limit}`, async () => {
+    const { results } = await db.prepare(`
+      SELECT ps.*, p.first_name, p.last_name, p.specialty, p.state, p.slug
+      FROM prescriber_summary ps
+      JOIN providers p ON p.npi = ps.npi
+      WHERE ps.total_drug_cost IS NOT NULL
+      ORDER BY ps.total_drug_cost DESC
+      LIMIT ?
+    `).bind(limit).all();
+    return results as any[];
+  });
+}
+
+export function getTopOpioidPrescribers(db: D1Database, limit = 50): Promise<(PrescriberSummary & { first_name: string; last_name: string; specialty: string; state: string; slug: string })[]> {
+  return cached(`top-opioid:${limit}`, async () => {
+    const { results } = await db.prepare(`
+      SELECT ps.*, p.first_name, p.last_name, p.specialty, p.state, p.slug
+      FROM prescriber_summary ps
+      JOIN providers p ON p.npi = ps.npi
+      WHERE ps.opioid_prescriber_rate IS NOT NULL AND ps.opioid_claims >= 10
+      ORDER BY ps.opioid_prescriber_rate DESC
+      LIMIT ?
+    `).bind(limit).all();
+    return results as any[];
+  });
+}
+
+export function getPrescriberStatsByState(db: D1Database, stateAbbr: string): Promise<{
+  prescribers: number; total_claims: number; total_cost: number;
+  avg_cost_per_prescriber: number; opioid_prescribers: number; avg_opioid_rate: number;
+} | null> {
+  return cached(`prescriber-stats:${stateAbbr}`, async () => {
+    return db.prepare(`
+      SELECT
+        COUNT(*) as prescribers,
+        SUM(ps.total_claims) as total_claims,
+        SUM(ps.total_drug_cost) as total_cost,
+        ROUND(AVG(ps.total_drug_cost)) as avg_cost_per_prescriber,
+        SUM(CASE WHEN ps.opioid_claims > 0 THEN 1 ELSE 0 END) as opioid_prescribers,
+        ROUND(AVG(CASE WHEN ps.opioid_prescriber_rate IS NOT NULL THEN ps.opioid_prescriber_rate END), 1) as avg_opioid_rate
+      FROM prescriber_summary ps
+      JOIN providers p ON p.npi = ps.npi
+      WHERE p.state = ?
+    `).bind(stateAbbr).first();
+  });
+}
+
+export function getNationalPrescriberStats(db: D1Database): Promise<{
+  total_prescribers: number; total_claims: number; total_cost: number;
+  opioid_prescribers: number; avg_opioid_rate: number; avg_bene_age: number;
+} | null> {
+  return cached('national-prescriber-stats', async () => {
+    return db.prepare(`
+      SELECT
+        COUNT(*) as total_prescribers,
+        SUM(total_claims) as total_claims,
+        SUM(total_drug_cost) as total_cost,
+        SUM(CASE WHEN opioid_claims > 0 THEN 1 ELSE 0 END) as opioid_prescribers,
+        ROUND(AVG(CASE WHEN opioid_prescriber_rate IS NOT NULL THEN opioid_prescriber_rate END), 1) as avg_opioid_rate,
+        ROUND(AVG(bene_avg_age), 1) as avg_bene_age
+      FROM prescriber_summary
+    `).first();
+  });
+}
+
 // --- Nursing Homes (CMS Five-Star Quality Rating) ---
 
 export interface NursingHome {
@@ -559,6 +658,9 @@ export async function warmQueryCache(db: D1Database): Promise<number> {
   const states = await getAllStates(db);
   const specialties = await getAllSpecialties(db);
   await Promise.all([
+    getNationalPrescriberStats(db),
+    getTopPrescribersByCost(db),
+    getTopOpioidPrescribers(db),
     getAllNursingHomeStates(db),
     getNursingHomeStats(db),
     getNursingHomeStaffingSummaryByState(db),
@@ -567,7 +669,10 @@ export async function warmQueryCache(db: D1Database): Promise<number> {
     getNationalDeficiencyAvg(db),
     getNursingHomesByStaffing(db),
     getNursingHomesByDeficiencies(db),
-    ...states.map(s => getCitiesByState(db, s.abbr)),
+    ...states.map(s => Promise.all([
+      getCitiesByState(db, s.abbr),
+      getPrescriberStatsByState(db, s.abbr),
+    ])),
     ...specialties.map(sp => Promise.all([
       getSpecialtyStates(db, sp.code),
       getSpecialtyCities(db, sp.code),

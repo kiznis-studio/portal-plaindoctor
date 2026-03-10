@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import AdSlot from '../../components/ads/AdSlot.astro';
-import { getProviderBySlug, formatProviderName, getStateName } from '../../lib/db';
+import { getProviderBySlug, formatProviderName, getStateName, getPrescriberSummary, formatNumber } from '../../lib/db';
 
 const { slug } = Astro.params;
 const db = Astro.locals.runtime.env.DB;
@@ -19,6 +19,13 @@ const formattedPhone = provider.phone?.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2
 // Get specialty slug for linking
 const specRow = await db.prepare('SELECT slug FROM specialties WHERE code = ?').bind(provider.specialty_code).first<{ slug: string }>();
 const specSlug = specRow?.slug || '';
+
+// Get Part D prescriber data
+const partD = await getPrescriberSummary(db, provider.npi);
+const hasPrescribing = partD && partD.total_claims != null;
+const brandPct = hasPrescribing && partD.brand_claims && partD.total_claims
+  ? Math.round(100 * partD.brand_claims / partD.total_claims) : null;
+const genericPct = brandPct != null ? 100 - brandPct : null;
 
 // Schema.org Person markup
 const personSchema = JSON.stringify({
@@ -43,6 +50,12 @@ faqItems.push({
   q: `What is ${fullName}'s specialty?`,
   a: `${fullName} specializes in ${provider.specialty} and practices in ${provider.city}, ${stateName}.${provider.credential ? ` Credentials: ${provider.credential}.` : ''}`
 });
+if (hasPrescribing) {
+  faqItems.push({
+    q: `How much does ${fullName} prescribe under Medicare Part D?`,
+    a: `In 2023, ${fullName} wrote ${formatNumber(partD.total_claims!)} Medicare Part D claims totaling $${partD.total_drug_cost! >= 1e6 ? (partD.total_drug_cost! / 1e6).toFixed(1) + 'M' : partD.total_drug_cost! >= 1e3 ? (partD.total_drug_cost! / 1e3).toFixed(0) + 'K' : Math.round(partD.total_drug_cost!).toLocaleString()} in drug costs for ${formatNumber(partD.total_beneficiaries!)} beneficiaries.`
+  });
+}
 faqItems.push({
   q: `Where is ${fullName} located?`,
   a: `${fullName} is located at ${[provider.address_line1, provider.city, provider.state, provider.zip].filter(Boolean).join(', ')}.${formattedPhone ? ` Phone: ${formattedPhone}.` : ''}`
@@ -65,7 +78,7 @@ const faqSchema = JSON.stringify({
 
 <Base
   title={`${fullName}${provider.credential ? `, ${provider.credential}` : ''} — ${provider.specialty}, ${provider.city}, ${provider.state}`}
-  description={`${fullName} is a ${provider.specialty} provider in ${provider.city}, ${stateName}. ${provider.credential ? `Credentials: ${provider.credential}. ` : ''}NPI: ${provider.npi}. CMS NPPES data with practice address and contact info.`}
+  description={`${fullName} is a ${provider.specialty} provider in ${provider.city}, ${stateName}. ${provider.credential ? `Credentials: ${provider.credential}. ` : ''}NPI: ${provider.npi}.${hasPrescribing ? ` ${formatNumber(partD.total_claims!)} Medicare Part D claims.` : ''} CMS NPPES data.`}
   breadcrumbs={[
     { name: 'Home', href: '/' },
     { name: stateName, href: `/state/${stateName.toLowerCase().replace(/\s+/g, '-')}` },
@@ -131,6 +144,107 @@ const faqSchema = JSON.stringify({
         </dl>
       </div>
     </div>
+
+    {hasPrescribing && (
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-4">Medicare Part D Prescribing Data</h2>
+        <p class="text-sm text-[var(--color-text-secondary)] mb-4">
+          CMS Medicare Part D prescriber-level data for calendar year 2023.
+        </p>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div class="text-2xl font-bold">{formatNumber(partD.total_claims!)}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">Total Claims</div>
+          </div>
+          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div class="text-2xl font-bold">${partD.total_drug_cost! >= 1e6 ? (partD.total_drug_cost! / 1e6).toFixed(1) + 'M' : partD.total_drug_cost! >= 1e3 ? (partD.total_drug_cost! / 1e3).toFixed(0) + 'K' : formatNumber(Math.round(partD.total_drug_cost!))}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">Total Drug Cost</div>
+          </div>
+          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div class="text-2xl font-bold">{formatNumber(partD.total_beneficiaries!)}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">Medicare Beneficiaries</div>
+          </div>
+        </div>
+
+        <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
+          <h3 class="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">Prescribing Breakdown</h3>
+          <dl class="grid sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            {partD.total_30day_fills != null && (
+              <div class="flex justify-between">
+                <dt class="text-[var(--color-text-secondary)]">30-Day Fills</dt>
+                <dd class="font-medium">{formatNumber(partD.total_30day_fills)}</dd>
+              </div>
+            )}
+            {partD.total_day_supply != null && (
+              <div class="flex justify-between">
+                <dt class="text-[var(--color-text-secondary)]">Total Day Supply</dt>
+                <dd class="font-medium">{formatNumber(partD.total_day_supply)}</dd>
+              </div>
+            )}
+            {brandPct != null && (
+              <div class="flex justify-between">
+                <dt class="text-[var(--color-text-secondary)]">Brand vs Generic</dt>
+                <dd class="font-medium">{brandPct}% brand / {genericPct}% generic</dd>
+              </div>
+            )}
+            {partD.brand_cost != null && (
+              <div class="flex justify-between">
+                <dt class="text-[var(--color-text-secondary)]">Brand Drug Cost</dt>
+                <dd class="font-medium">${partD.brand_cost >= 1e6 ? (partD.brand_cost / 1e6).toFixed(1) + 'M' : partD.brand_cost >= 1e3 ? (partD.brand_cost / 1e3).toFixed(0) + 'K' : Math.round(partD.brand_cost).toLocaleString()}</dd>
+              </div>
+            )}
+            {partD.generic_cost != null && (
+              <div class="flex justify-between">
+                <dt class="text-[var(--color-text-secondary)]">Generic Drug Cost</dt>
+                <dd class="font-medium">${partD.generic_cost >= 1e6 ? (partD.generic_cost / 1e6).toFixed(1) + 'M' : partD.generic_cost >= 1e3 ? (partD.generic_cost / 1e3).toFixed(0) + 'K' : Math.round(partD.generic_cost).toLocaleString()}</dd>
+              </div>
+            )}
+            {partD.opioid_claims != null && partD.opioid_claims > 0 && (
+              <div class="flex justify-between">
+                <dt class="text-[var(--color-text-secondary)]">Opioid Claims</dt>
+                <dd class="font-medium">{formatNumber(partD.opioid_claims)}{partD.opioid_prescriber_rate != null ? ` (${partD.opioid_prescriber_rate.toFixed(1)}% rate)` : ''}</dd>
+              </div>
+            )}
+            {partD.antibiotic_claims != null && partD.antibiotic_claims > 0 && (
+              <div class="flex justify-between">
+                <dt class="text-[var(--color-text-secondary)]">Antibiotic Claims</dt>
+                <dd class="font-medium">{formatNumber(partD.antibiotic_claims)}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+
+        {partD.bene_avg_age != null && (
+          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 mt-4">
+            <h3 class="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">Patient Demographics</h3>
+            <dl class="grid sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+              <div class="flex justify-between">
+                <dt class="text-[var(--color-text-secondary)]">Average Patient Age</dt>
+                <dd class="font-medium">{partD.bene_avg_age.toFixed(1)} years</dd>
+              </div>
+              {partD.bene_avg_risk_score != null && (
+                <div class="flex justify-between">
+                  <dt class="text-[var(--color-text-secondary)]">Avg HCC Risk Score</dt>
+                  <dd class="font-medium">{partD.bene_avg_risk_score.toFixed(2)}</dd>
+                </div>
+              )}
+              {partD.bene_female != null && partD.bene_male != null && (
+                <div class="flex justify-between">
+                  <dt class="text-[var(--color-text-secondary)]">Gender Split</dt>
+                  <dd class="font-medium">{Math.round(100 * partD.bene_female / (partD.bene_female + partD.bene_male))}% female / {Math.round(100 * partD.bene_male / (partD.bene_female + partD.bene_male))}% male</dd>
+                </div>
+              )}
+              {partD.bene_age_lt65 != null && (
+                <div class="flex justify-between">
+                  <dt class="text-[var(--color-text-secondary)]">Age Distribution</dt>
+                  <dd class="font-medium text-right">&lt;65: {formatNumber(partD.bene_age_lt65)}, 65-74: {formatNumber(partD.bene_age_65_74!)}, 75-84: {formatNumber(partD.bene_age_75_84!)}, 85+: {formatNumber(partD.bene_age_gt84!)}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        )}
+      </div>
+    )}
 
     <div class="flex flex-wrap gap-2 mb-8">
       {specSlug && (
