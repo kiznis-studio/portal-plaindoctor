@@ -9,7 +9,7 @@ services:
       - DATABASE_PATH=/data/portal.db
       - HOST=0.0.0.0
       - PORT=4321
-      - CACHE_ENTRIES=2000
+      - CACHE_ENTRIES=500
     networks:
       - portals
     mem_limit: 1024m
