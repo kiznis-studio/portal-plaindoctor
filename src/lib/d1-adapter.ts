@@ -52,10 +52,13 @@ function applyPragmas(db: InstanceType<typeof Database>, dbPath: string) {
   else if (fileSizeMB > 10) cacheSize = -16384;    // 16MB
   else cacheSize = -4096;                           // 4MB
 
-  // mmap_size: virtual address space is free on 64-bit; only accessed pages consume RAM.
-  // Map the full DB file — lets SQLite bypass pread() syscalls entirely.
-  // OS manages which pages stay resident based on available memory.
-  const mmapSize = Math.max(fileSize, 16 * 1024 * 1024);
+  // mmap_size: maps DB pages into process address space, bypassing pread() syscalls.
+  // Cap at 512MB — mmap'd pages count toward cgroup memory limit in cgroup v2.
+  // Uncapped mmap on a 2.5GB DB in a 1GB container causes constant reclaim thrashing
+  // (9K+ max events in minutes). 512MB covers hot index pages while leaving ~450MB
+  // for Node.js heap, response cache, and headroom. Remaining reads use pread().
+  const MMAP_CAP = 512 * 1024 * 1024;
+  const mmapSize = Math.min(Math.max(fileSize, 16 * 1024 * 1024), MMAP_CAP);
 
   try {
     db.pragma(`cache_size = ${cacheSize}`);
