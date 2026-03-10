@@ -124,11 +124,11 @@ export async function getProviderByNpi(db: D1Database, npi: string): Promise<Pro
 
 export async function getProvidersBySpecialtyAndState(
   db: D1Database, specialtyCode: string, state: string, limit = 50, offset = 0
-): Promise<Provider[]> {
+): Promise<Pick<Provider, 'slug' | 'first_name' | 'last_name' | 'credential' | 'specialty' | 'city' | 'state' | 'zip' | 'phone'>[]> {
   const { results } = await db.prepare(
-    'SELECT * FROM providers WHERE specialty_code = ? AND state = ? ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE LIMIT ? OFFSET ?'
-  ).bind(specialtyCode, state, limit, offset).all<Provider>();
-  return results;
+    'SELECT slug, first_name, last_name, credential, specialty, city, state, zip, phone FROM providers WHERE specialty_code = ? AND state = ? ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE LIMIT ? OFFSET ?'
+  ).bind(specialtyCode, state, limit, offset).all();
+  return results as Pick<Provider, 'slug' | 'first_name' | 'last_name' | 'credential' | 'specialty' | 'city' | 'state' | 'zip' | 'phone'>[];
 }
 
 export async function getProviderCountBySpecialtyAndState(
@@ -213,23 +213,25 @@ export async function getCityBySlug(db: D1Database, slug: string): Promise<CityI
 
 export async function getProvidersByCity(
   db: D1Database, city: string, state: string, limit = 50, offset = 0
-): Promise<Provider[]> {
+): Promise<Pick<Provider, 'slug' | 'first_name' | 'last_name' | 'credential' | 'specialty' | 'phone'>[]> {
   const { results } = await db.prepare(
-    'SELECT * FROM providers WHERE city = ? AND state = ? ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE LIMIT ? OFFSET ?'
-  ).bind(city, state, limit, offset).all<Provider>();
-  return results;
+    'SELECT slug, first_name, last_name, credential, specialty, phone FROM providers WHERE city = ? AND state = ? ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE LIMIT ? OFFSET ?'
+  ).bind(city, state, limit, offset).all();
+  return results as Pick<Provider, 'slug' | 'first_name' | 'last_name' | 'credential' | 'specialty' | 'phone'>[];
 }
 
-export async function getCitySpecialties(
+export function getCitySpecialties(
   db: D1Database, city: string, state: string, limit = 20
 ): Promise<{ specialty: string; specialty_code: string; count: number }[]> {
-  const { results } = await db.prepare(
-    `SELECT specialty, specialty_code, COUNT(*) as count FROM providers
-     WHERE city = ? AND state = ?
-     GROUP BY specialty_code
-     ORDER BY count DESC LIMIT ?`
-  ).bind(city, state, limit).all<{ specialty: string; specialty_code: string; count: number }>();
-  return results;
+  return cached(`city-specs:${city}:${state}:${limit}`, async () => {
+    const { results } = await db.prepare(
+      `SELECT specialty, specialty_code, COUNT(*) as count FROM providers
+       WHERE city = ? AND state = ?
+       GROUP BY specialty_code
+       ORDER BY count DESC LIMIT ?`
+    ).bind(city, state, limit).all<{ specialty: string; specialty_code: string; count: number }>();
+    return results;
+  });
 }
 
 // --- Search ---

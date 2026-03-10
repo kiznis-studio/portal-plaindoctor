@@ -52,10 +52,10 @@ function applyPragmas(db: InstanceType<typeof Database>, dbPath: string) {
   else if (fileSizeMB > 10) cacheSize = -16384;    // 16MB
   else cacheSize = -4096;                           // 4MB
 
-  // mmap_size: capped to fit within Docker container memory limits
-  // Cap at 128MB — larger DBs still benefit from OS page cache outside mmap
-  const MMAP_CAP = 128 * 1024 * 1024;
-  const mmapSize = Math.min(Math.max(fileSize, 16 * 1024 * 1024), MMAP_CAP);
+  // mmap_size: virtual address space is free on 64-bit; only accessed pages consume RAM.
+  // Map the full DB file — lets SQLite bypass pread() syscalls entirely.
+  // OS manages which pages stay resident based on available memory.
+  const mmapSize = Math.max(fileSize, 16 * 1024 * 1024);
 
   try {
     db.pragma(`cache_size = ${cacheSize}`);
