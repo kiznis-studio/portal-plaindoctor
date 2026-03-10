@@ -99,13 +99,46 @@ CREATE INDEX idx_cts_city ON city_top_specialties(city, state, provider_count DE
 SQL
 echo "  $(sqlite3 "$DB" 'SELECT COUNT(*) FROM city_top_specialties') rows"
 
-# Step 4: ANALYZE (update query planner stats)
-echo "Step 4/5: Running ANALYZE..."
+# Step 4: Pre-compute priority sitemap slugs
+echo "Step 4/7: Creating sitemap_priority..."
+sqlite3 "$DB" <<'SQL'
+DROP TABLE IF EXISTS sitemap_priority;
+CREATE TABLE sitemap_priority (slug TEXT NOT NULL);
+
+INSERT INTO sitemap_priority (slug)
+SELECT p.slug
+FROM providers p
+WHERE p.specialty_code IN (
+  SELECT code FROM specialties WHERE name IN (
+    'Family Medicine','Internal Medicine','Pediatrics',
+    'Obstetrics & Gynecology','Cardiology','Dermatology',
+    'Orthopedic Surgery','Psychiatry & Neurology','Ophthalmology',
+    'General Surgery','Emergency Medicine','Anesthesiology',
+    'Radiology','Nurse Practitioner','Dentist','Optometry',
+    'Physical Therapy','Chiropractor','Podiatry','Physician Assistant'
+  )
+)
+AND p.city IN (SELECT city FROM cities WHERE provider_count >= 50)
+AND p.state IN (SELECT state FROM cities WHERE provider_count >= 50)
+ORDER BY p.last_name
+LIMIT 49000;
+SQL
+echo "  $(sqlite3 "$DB" 'SELECT COUNT(*) FROM sitemap_priority') slugs"
+
+# Step 5: ANALYZE (update query planner stats)
+echo "Step 5/7: Running ANALYZE..."
 sqlite3 "$DB" "ANALYZE;"
 
-# Step 5: VACUUM + journal mode
-echo "Step 5/5: VACUUM + journal_mode=DELETE..."
+# Step 6: VACUUM + journal mode
+echo "Step 6/7: VACUUM + journal_mode=DELETE..."
 sqlite3 "$DB" "VACUUM; PRAGMA journal_mode=DELETE;"
+
+# Step 7: Verify
+echo "Step 7/7: Verifying..."
+sqlite3 "$DB" "SELECT 'sitemap_pages: ' || COUNT(*) FROM sitemap_pages;
+SELECT 'specialty_top_cities: ' || COUNT(*) FROM specialty_top_cities;
+SELECT 'city_top_specialties: ' || COUNT(*) FROM city_top_specialties;
+SELECT 'sitemap_priority: ' || COUNT(*) FROM sitemap_priority;"
 
 echo "DB size after: $(du -h "$DB" | cut -f1)"
 echo "Done! Cache tables created."
