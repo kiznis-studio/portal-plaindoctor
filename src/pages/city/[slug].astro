@@ -49,7 +49,7 @@ const faqSchema = JSON.stringify({
 ---
 
 <Base
-  title={`Doctors in ${cityName}, ${city.state} — ${city.provider_count.toLocaleString()} Healthcare Providers`}
+  title={`${cityName}, ${city.state} Doctors: ${city.provider_count.toLocaleString()} Providers Across ${specialties.length} Specialties${specialties.length > 0 ? ` — Top: ${specialties[0].specialty}` : ''}`}
   description={`Find ${city.provider_count.toLocaleString()} healthcare providers in ${cityName}, ${stateName}. Browse doctors, dentists, therapists, and specialists by name or specialty. Free directory from CMS NPPES data.`}
   breadcrumbs={[{ name: 'Home', href: '/' }, { name: 'States', href: '/state' }, { name: stateName, href: `/state/${stateSlug}` }, { name: cityName }]}
 >
