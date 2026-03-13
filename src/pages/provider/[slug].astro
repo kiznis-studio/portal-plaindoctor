@@ -77,8 +77,8 @@ const faqSchema = JSON.stringify({
 ---
 
 <Base
-  title={`${provider.credential ? 'Dr. ' : ''}${provider.first_name} ${provider.last_name} — ${provider.specialty} in ${provider.city}, ${stateName}`}
-  description={`${fullName} is a ${provider.specialty} provider in ${provider.city}, ${stateName}. NPI: ${provider.npi}.${hasPrescribing ? ` ${formatNumber(partD.total_claims!)} Medicare Part D claims.` : ''} View contact info, credentials & prescribing data.`}
+  title={`${provider.credential ? 'Dr. ' : ''}${provider.first_name} ${provider.last_name}${provider.credential ? ', ' + provider.credential : ''} — ${provider.specialty} | ${provider.city}, ${provider.state}`}
+  description={`${fullName} is a ${provider.specialty} provider in ${provider.city}, ${stateName}.${hasPrescribing ? ` ${formatNumber(partD.total_claims!)} Medicare Part D claims in 2023.` : ''} NPI ${provider.npi}. View credentials, prescribing data & contact info.`}
   breadcrumbs={[
     { name: 'Home', href: '/' },
     { name: stateName, href: `/state/${stateName.toLowerCase().replace(/\s+/g, '-')}` },
