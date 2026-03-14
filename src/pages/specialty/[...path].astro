@@ -16,6 +16,12 @@ const stateAbbr = parts[1].toUpperCase();
 const page = parts[2] ? parseInt(parts[2]) : 1;
 const perPage = 50;
 
+// Guard: reject invalid paths (e.g. _astro/page.js from crawler URL munging)
+if (isNaN(page) || page < 1 || parts.length > 3) {
+  Astro.response.status = 404;
+  return Astro.redirect('/404');
+}
+
 const db = Astro.locals.runtime.env.DB;
 const specialty = await getSpecialtyBySlug(db, specSlug);
 
