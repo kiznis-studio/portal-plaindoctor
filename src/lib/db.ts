@@ -214,18 +214,17 @@ export async function getProvidersByCity(
   return results as Pick<Provider, 'slug' | 'first_name' | 'last_name' | 'credential' | 'specialty' | 'phone'>[];
 }
 
-export function getCitySpecialties(
+export async function getCitySpecialties(
   db: D1Database, city: string, state: string, limit = 20
 ): Promise<{ specialty: string; specialty_code: string; count: number }[]> {
-  return cached(`city-specs:${city}:${state}:${limit}`, async () => {
-    const { results } = await db.prepare(
-      `SELECT specialty, specialty_code, provider_count as count
-       FROM city_top_specialties
-       WHERE city = ? AND state = ?
-       ORDER BY provider_count DESC LIMIT ?`
-    ).bind(city, state, limit).all<{ specialty: string; specialty_code: string; count: number }>();
-    return results;
-  });
+  // Materialized table lookup — already <2ms, no cache needed (response cache handles pages)
+  const { results } = await db.prepare(
+    `SELECT specialty, specialty_code, provider_count as count
+     FROM city_top_specialties
+     WHERE city = ? AND state = ?
+     ORDER BY provider_count DESC LIMIT ?`
+  ).bind(city, state, limit).all<{ specialty: string; specialty_code: string; count: number }>();
+  return results;
 }
 
 // --- Sitemap Helpers ---
