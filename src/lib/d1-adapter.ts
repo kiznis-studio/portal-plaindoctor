@@ -52,12 +52,9 @@ function applyPragmas(db: InstanceType<typeof Database>, dbPath: string) {
   else if (fileSizeMB > 10) cacheSize = -16384;    // 16MB
   else cacheSize = -4096;                           // 4MB
 
-  // mmap_size: maps DB pages into process address space, bypassing pread() syscalls.
-  // Cap at 512MB — mmap'd pages count toward cgroup memory limit in cgroup v2.
-  // Uncapped mmap on a 2.5GB DB in a 1GB container causes constant reclaim thrashing
-  // (9K+ max events in minutes). 512MB covers hot index pages while leaving ~450MB
-  // for Node.js heap, response cache, and headroom. Remaining reads use pread().
-  const MMAP_CAP = 512 * 1024 * 1024;
+  // mmap_size: capped to fit within Docker container memory limits
+  // Cap at 256MB — larger DBs still benefit from OS page cache outside mmap
+  const MMAP_CAP = 256 * 1024 * 1024;
   const mmapSize = Math.min(Math.max(fileSize, 16 * 1024 * 1024), MMAP_CAP);
 
   try {
@@ -75,11 +72,12 @@ function applyPragmas(db: InstanceType<typeof Database>, dbPath: string) {
 // Fix: copy to /tmp, convert to DELETE journal mode, use the copy.
 function openDatabase(dbPath: string): InstanceType<typeof Database> {
   try {
-    const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const db = new Database(dbPath, { fileMustExist: true });
     // Try a simple prepare to verify the DB is usable
     db.prepare('SELECT 1').get();
-    // Try to force DELETE mode in case the DB is WAL but mount is writable
-    try { db.pragma('journal_mode = DELETE'); } catch { /* :ro mount, expected */ }
+    // Enable WAL mode for better concurrent read performance
+    try { db.pragma('journal_mode = WAL'); } catch { /* expected on truly read-only mounts */ }
+    db.pragma('query_only = ON'); // Safety: reject all SQL writes
 
     // Performance pragmas — auto-tuned to DB file size (session-level, not persisted)
     applyPragmas(db, dbPath);
