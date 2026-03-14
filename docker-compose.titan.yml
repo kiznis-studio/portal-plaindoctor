@@ -9,15 +9,15 @@ services:
       - DATABASE_PATH=/data/portal.db
       - HOST=0.0.0.0
       - PORT=4321
-      - CACHE_ENTRIES=500
-      - WORKERS=1
-      - WORKERS_MAX=4
+      - CACHE_ENTRIES=50000
+      - WORKERS=2
+      - WORKERS_MAX=3
       - MGMT_PORT=4322
-      - MAX_BOT_CONCURRENT=25
+      - MAX_BOT_CONCURRENT=15
     networks:
       - portals
-    mem_limit: 1536m
-    cpus: 0.5
+    mem_limit: 2048m
+    cpus: 1.0
 
 networks:
   portals:
