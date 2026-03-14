@@ -419,33 +419,40 @@ export interface RelatedProvider {
 export async function getRelatedProviders(
   db: D1Database, specialtyCode: string, state: string, excludeNpi: string, limit = 6
 ): Promise<RelatedProvider[]> {
-  const { results } = await db.prepare(
-    `SELECT slug, first_name, last_name, credential, specialty, city, state
-     FROM providers
-     WHERE specialty_code = ? AND state = ? AND npi != ?
-     ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE
-     LIMIT ?`
-  ).bind(specialtyCode, state, excludeNpi, limit).all<RelatedProvider>();
-  return results;
+  // Cache per specialty+state (fetch slightly more, filter excludeNpi in JS)
+  const all = await cached(`related:${specialtyCode}:${state}`, async () => {
+    const { results } = await db.prepare(
+      `SELECT npi, slug, first_name, last_name, credential, specialty, city, state
+       FROM providers
+       WHERE specialty_code = ? AND state = ?
+       ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE
+       LIMIT ?`
+    ).bind(specialtyCode, state, limit + 5).all<RelatedProvider & { npi: string }>();
+    return results;
+  });
+  return all.filter(p => p.npi !== excludeNpi).slice(0, limit);
 }
 
 // --- Specialty Stats (for provider detail context) ---
 
-export async function getSpecialtyStats(db: D1Database, specialtyCode: string): Promise<{
+export function getSpecialtyStats(db: D1Database, specialtyCode: string): Promise<{
   total_providers: number;
   states_count: number;
   prescribers: number | null;
   avg_claims: number | null;
   avg_cost: number | null;
 } | null> {
-  return db.prepare(`
-    SELECT
-      (SELECT COUNT(*) FROM providers WHERE specialty_code = ?) as total_providers,
-      (SELECT COUNT(DISTINCT state) FROM providers WHERE specialty_code = ?) as states_count,
-      (SELECT COUNT(*) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as prescribers,
-      (SELECT ROUND(AVG(ps.total_claims)) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as avg_claims,
-      (SELECT ROUND(AVG(ps.total_drug_cost)) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as avg_cost
-  `).bind(specialtyCode, specialtyCode, specialtyCode, specialtyCode, specialtyCode).first();
+  // Cache per specialty — same result for all providers in that specialty
+  return cached(`spec-stats:${specialtyCode}`, () =>
+    db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM providers WHERE specialty_code = ?) as total_providers,
+        (SELECT COUNT(DISTINCT state) FROM providers WHERE specialty_code = ?) as states_count,
+        (SELECT COUNT(*) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as prescribers,
+        (SELECT ROUND(AVG(ps.total_claims)) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as avg_claims,
+        (SELECT ROUND(AVG(ps.total_drug_cost)) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as avg_cost
+    `).bind(specialtyCode, specialtyCode, specialtyCode, specialtyCode, specialtyCode).first()
+  );
 }
 
 // --- Nursing Homes (CMS Five-Star Quality Rating) ---
