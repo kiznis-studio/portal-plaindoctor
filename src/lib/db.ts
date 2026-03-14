@@ -404,6 +404,54 @@ export function getNationalPrescriberStats(db: D1Database): Promise<{
   });
 }
 
+// --- Related Providers ---
+
+export interface RelatedProvider {
+  slug: string;
+  first_name: string;
+  last_name: string;
+  credential: string | null;
+  specialty: string;
+  city: string;
+  state: string;
+}
+
+export function getRelatedProviders(
+  db: D1Database, specialtyCode: string, state: string, excludeNpi: string, limit = 6
+): Promise<RelatedProvider[]> {
+  return cached(`related:${specialtyCode}:${state}:${excludeNpi}:${limit}`, async () => {
+    const { results } = await db.prepare(
+      `SELECT slug, first_name, last_name, credential, specialty, city, state
+       FROM providers
+       WHERE specialty_code = ? AND state = ? AND npi != ?
+       ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE
+       LIMIT ?`
+    ).bind(specialtyCode, state, excludeNpi, limit).all<RelatedProvider>();
+    return results;
+  });
+}
+
+// --- Specialty Stats (for provider detail context) ---
+
+export function getSpecialtyStats(db: D1Database, specialtyCode: string): Promise<{
+  total_providers: number;
+  states_count: number;
+  prescribers: number | null;
+  avg_claims: number | null;
+  avg_cost: number | null;
+} | null> {
+  return cached(`spec-stats:${specialtyCode}`, async () => {
+    return db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM providers WHERE specialty_code = ?) as total_providers,
+        (SELECT COUNT(DISTINCT state) FROM providers WHERE specialty_code = ?) as states_count,
+        (SELECT COUNT(*) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as prescribers,
+        (SELECT ROUND(AVG(ps.total_claims)) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as avg_claims,
+        (SELECT ROUND(AVG(ps.total_drug_cost)) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as avg_cost
+    `).bind(specialtyCode, specialtyCode, specialtyCode, specialtyCode, specialtyCode).first();
+  });
+}
+
 // --- Nursing Homes (CMS Five-Star Quality Rating) ---
 
 export interface NursingHome {

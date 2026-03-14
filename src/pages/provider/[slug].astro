@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import AdSlot from '../../components/ads/AdSlot.astro';
-import { getProviderBySlug, formatProviderName, getStateName, getPrescriberSummary, formatNumber } from '../../lib/db';
+import { getProviderBySlug, formatProviderName, getStateName, getPrescriberSummary, formatNumber, getRelatedProviders, getSpecialtyStats } from '../../lib/db';
 
 const { slug } = Astro.params;
 const db = Astro.locals.runtime.env.DB;
@@ -26,6 +26,12 @@ const hasPrescribing = partD && partD.total_claims != null;
 const brandPct = hasPrescribing && partD.brand_claims && partD.total_claims
   ? Math.round(100 * partD.brand_claims / partD.total_claims) : null;
 const genericPct = brandPct != null ? 100 - brandPct : null;
+
+// Related providers (same specialty, same state)
+const relatedProviders = await getRelatedProviders(db, provider.specialty_code, provider.state, provider.npi, 6);
+
+// Specialty context stats (for comparison)
+const specStats = await getSpecialtyStats(db, provider.specialty_code);
 
 // Schema.org Person markup
 const personSchema = JSON.stringify({
@@ -64,6 +70,24 @@ faqItems.push({
   q: `What is ${fullName}'s NPI number?`,
   a: `${fullName}'s National Provider Identifier (NPI) is ${provider.npi}${provider.enumeration_date ? `, issued on ${provider.enumeration_date}` : ''}.`
 });
+if (hasPrescribing && brandPct != null) {
+  faqItems.push({
+    q: `Does ${fullName} prescribe more brand-name or generic drugs?`,
+    a: `${fullName}'s prescribing is ${brandPct}% brand-name and ${genericPct}% generic drugs by claim count${partD.brand_cost ? `, with $${partD.brand_cost >= 1e6 ? (partD.brand_cost / 1e6).toFixed(1) + 'M' : partD.brand_cost >= 1e3 ? (partD.brand_cost / 1e3).toFixed(0) + 'K' : Math.round(partD.brand_cost).toLocaleString()} in brand drug costs` : ''}.`
+  });
+}
+if (hasPrescribing && partD.opioid_claims && partD.opioid_claims > 0) {
+  faqItems.push({
+    q: `Does ${fullName} prescribe opioids?`,
+    a: `Yes, ${fullName} had ${formatNumber(partD.opioid_claims)} opioid claims in 2023${partD.opioid_prescriber_rate != null ? ` with an opioid prescribing rate of ${partD.opioid_prescriber_rate.toFixed(1)}%` : ''}.`
+  });
+}
+if (specStats && specStats.total_providers) {
+  faqItems.push({
+    q: `How many ${provider.specialty} providers are there in the US?`,
+    a: `There are ${formatNumber(specStats.total_providers)} ${provider.specialty} providers across ${specStats.states_count} states in the US.${specStats.avg_claims ? ` The average ${provider.specialty} provider writes ${formatNumber(specStats.avg_claims)} Medicare Part D claims per year.` : ''}`
+  });
+}
 
 const faqSchema = JSON.stringify({
   '@context': 'https://schema.org',
@@ -77,7 +101,7 @@ const faqSchema = JSON.stringify({
 ---
 
 <Base
-  title={`${provider.credential ? 'Dr. ' : ''}${provider.first_name} ${provider.last_name}${provider.credential ? ', ' + provider.credential : ''} — ${provider.specialty} | ${provider.city}, ${provider.state}`}
+  title={`${provider.credential ? 'Dr. ' : ''}${provider.first_name} ${provider.last_name}${provider.credential ? ', ' + provider.credential : ''} — ${provider.specialty}${hasPrescribing ? `, ${formatNumber(partD.total_claims!)} Claims` : ''} | ${provider.city}, ${provider.state}`}
   description={`${fullName} is a ${provider.specialty} provider in ${provider.city}, ${stateName}.${hasPrescribing ? ` ${formatNumber(partD.total_claims!)} Medicare Part D claims in 2023.` : ''} NPI ${provider.npi}. View credentials, prescribing data & contact info.`}
   breadcrumbs={[
     { name: 'Home', href: '/' },
@@ -257,7 +281,76 @@ const faqSchema = JSON.stringify({
       </a>
     </div>
 
+    {/* Specialty Context */}
+    {specStats && specStats.total_providers > 0 && (
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-4">{provider.specialty} Overview</h2>
+        <p class="text-sm text-[var(--color-text-secondary)] mb-4">
+          How {fullName} fits within the {provider.specialty} landscape nationally.
+        </p>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div class="text-2xl font-bold">{formatNumber(specStats.total_providers)}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">{provider.specialty} Providers in US</div>
+          </div>
+          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div class="text-2xl font-bold">{specStats.states_count}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">States with {provider.specialty}</div>
+          </div>
+          {specStats.avg_claims && (
+            <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+              <div class="text-2xl font-bold">{formatNumber(specStats.avg_claims)}</div>
+              <div class="text-xs text-[var(--color-text-secondary)]">Avg Claims per Provider</div>
+            </div>
+          )}
+        </div>
+        {hasPrescribing && specStats.avg_claims && (
+          <p class="mt-3 text-sm text-[var(--color-text-secondary)]">
+            {fullName}'s {formatNumber(partD.total_claims!)} claims are {partD.total_claims! > specStats.avg_claims ? 'above' : 'below'} the specialty average of {formatNumber(specStats.avg_claims)}.
+          </p>
+        )}
+      </div>
+    )}
+
     <AdSlot slot="mid" />
+
+    {/* Related Providers */}
+    {relatedProviders.length > 0 && (
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-4">Other {provider.specialty} Providers in {stateName}</h2>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {relatedProviders.map(rp => (
+            <a href={`/provider/${rp.slug}`} class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors">
+              <div class="font-medium text-sm">{rp.credential ? 'Dr. ' : ''}{rp.first_name} {rp.last_name}</div>
+              {rp.credential && <div class="text-xs text-[var(--color-text-secondary)]">{rp.credential}</div>}
+              <div class="text-xs text-[var(--color-text-secondary)] mt-1">{rp.city}, {rp.state}</div>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Cross-Portal Health Data */}
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-4">Related Health Data</h2>
+      <p class="text-sm text-[var(--color-text-secondary)] mb-4">
+        Explore related healthcare data from our partner portals.
+      </p>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <a href={`https://plainhospital.com/state/${provider.state.toLowerCase()}`} class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors" target="_blank" rel="noopener">
+          <div class="font-medium text-sm">Hospitals in {stateName}</div>
+          <div class="text-xs text-[var(--color-text-secondary)] mt-1">Star ratings, quality measures & patient experience</div>
+        </a>
+        <a href={`https://plainnursing.com/state/${provider.state.toLowerCase()}`} class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors" target="_blank" rel="noopener">
+          <div class="font-medium text-sm">Nursing Homes in {stateName}</div>
+          <div class="text-xs text-[var(--color-text-secondary)] mt-1">Quality ratings, staffing & deficiency data</div>
+        </a>
+        <a href={`https://plainmeds.com`} class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors" target="_blank" rel="noopener">
+          <div class="font-medium text-sm">Drug Information</div>
+          <div class="text-xs text-[var(--color-text-secondary)] mt-1">FDA drug data, interactions & alternatives</div>
+        </a>
+      </div>
+    </div>
 
     <div class="mb-8">
       <h2 class="text-lg font-semibold mb-4">Frequently Asked Questions</h2>
@@ -274,18 +367,32 @@ const faqSchema = JSON.stringify({
       </div>
     </div>
 
-    <!-- Cross-Portal Links -->
-    <div class="mt-10 pt-6 border-t border-[var(--color-border)]">
-      <h3 class="text-sm font-semibold uppercase tracking-wider mb-3">Explore More Data</h3>
-      <div class="flex flex-wrap gap-2">
-        <a href="https://plaincost.com" class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors" target="_blank" rel="noopener">Cost of Living →</a>
-        <a href="https://plaincompare.com" class="text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors" target="_blank" rel="noopener">Compare Cities →</a>
+    {/* Data Sources & Methodology */}
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold mb-4">Data Sources & Methodology</h2>
+      <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
+        <dl class="space-y-3 text-sm">
+          <div>
+            <dt class="font-medium">Provider Directory</dt>
+            <dd class="text-[var(--color-text-secondary)]">CMS National Plan and Provider Enumeration System (NPPES) — updated monthly. Contains NPI, specialty, credentials, and practice location.</dd>
+          </div>
+          {hasPrescribing && (
+            <div>
+              <dt class="font-medium">Prescribing Data</dt>
+              <dd class="text-[var(--color-text-secondary)]">CMS Medicare Part D Prescriber Public Use File — Calendar Year 2023. Includes claims, drug costs, beneficiaries, and opioid prescribing rates.</dd>
+            </div>
+          )}
+          <div>
+            <dt class="font-medium">Methodology</dt>
+            <dd class="text-[var(--color-text-secondary)]">Provider data is self-reported to CMS. Prescribing data reflects Medicare Part D only and does not include commercial insurance, Medicaid, or cash prescriptions. Claims below 11 beneficiaries are suppressed by CMS for privacy.</dd>
+          </div>
+        </dl>
       </div>
     </div>
 
     <div class="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm mt-6">
       <p class="text-amber-800 dark:text-amber-200">
-        <strong>Disclaimer:</strong> Data from CMS NPPES. PlainDoctor does not rate or rank providers. Provider information is self-reported and may not be current. Always verify information directly with the provider.
+        <strong>Disclaimer:</strong> Data from CMS NPPES and Medicare Part D. PlainDoctor does not rate or rank providers. Provider information is self-reported and may not be current. Always verify information directly with the provider.
         <a href="/about" class="underline">Learn more</a>
       </p>
     </div>
