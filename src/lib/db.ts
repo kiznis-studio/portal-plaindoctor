@@ -435,24 +435,17 @@ export async function getRelatedProviders(
 
 // --- Specialty Stats (for provider detail context) ---
 
-export function getSpecialtyStats(db: D1Database, specialtyCode: string): Promise<{
+export async function getSpecialtyStats(db: D1Database, specialtyCode: string): Promise<{
   total_providers: number;
   states_count: number;
   prescribers: number | null;
   avg_claims: number | null;
   avg_cost: number | null;
 } | null> {
-  // Cache per specialty — same result for all providers in that specialty
-  return cached(`spec-stats:${specialtyCode}`, () =>
-    db.prepare(`
-      SELECT
-        (SELECT COUNT(*) FROM providers WHERE specialty_code = ?) as total_providers,
-        (SELECT COUNT(DISTINCT state) FROM providers WHERE specialty_code = ?) as states_count,
-        (SELECT COUNT(*) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as prescribers,
-        (SELECT ROUND(AVG(ps.total_claims)) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as avg_claims,
-        (SELECT ROUND(AVG(ps.total_drug_cost)) FROM prescriber_summary ps JOIN providers p ON p.npi = ps.npi WHERE p.specialty_code = ?) as avg_cost
-    `).bind(specialtyCode, specialtyCode, specialtyCode, specialtyCode, specialtyCode).first()
-  );
+  // Materialized table — pre-computed during ETL, single PK lookup (<1ms)
+  return db.prepare(
+    'SELECT total_providers, states_count, prescribers, avg_claims, avg_cost FROM specialty_prescriber_stats WHERE specialty_code = ?'
+  ).bind(specialtyCode).first();
 }
 
 // --- Nursing Homes (CMS Five-Star Quality Rating) ---
@@ -726,7 +719,7 @@ export async function warmQueryCache(db: D1Database): Promise<number> {
     ])),
     ...specialties.map(sp => Promise.all([
       getSpecialtyStates(db, sp.code),
-      getSpecialtyCities(db, sp.code),
+      getTopCitiesBySpecialty(db, sp.code),
     ])),
   ]);
   console.log(`[cache] Warmed ${queryCache.size} queries in ${Date.now() - start}ms`);
