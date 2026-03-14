@@ -699,7 +699,9 @@ export function getNationalDeficiencyAvg(
 export async function warmQueryCache(db: D1Database): Promise<number> {
   const start = Date.now();
   const states = await getAllStates(db);
-  const specialties = await getAllSpecialties(db);
+  // Warm only top 100 specialties by provider count (already sorted DESC).
+  // The other 590 specialties cache on-demand (<2ms from materialized tables).
+  const topSpecialties = (await getAllSpecialties(db)).slice(0, 100);
   await Promise.all([
     getNationalPrescriberStats(db),
     getTopPrescribersByCost(db),
@@ -716,7 +718,7 @@ export async function warmQueryCache(db: D1Database): Promise<number> {
       getCitiesByState(db, s.abbr),
       getPrescriberStatsByState(db, s.abbr),
     ])),
-    ...specialties.map(sp => Promise.all([
+    ...topSpecialties.map(sp => Promise.all([
       getSpecialtyStates(db, sp.code),
       getTopCitiesBySpecialty(db, sp.code),
     ])),
