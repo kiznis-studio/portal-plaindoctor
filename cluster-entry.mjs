@@ -20,10 +20,6 @@ import cluster from 'node:cluster';
 import http from 'node:http';
 import { gzipSync, gunzipSync } from 'node:zlib';
 
-// Use V8 serialization for IPC — natively handles Map, Set, Date, RegExp, ArrayBuffer.
-// Without this, process.send() uses JSON which silently converts Map→{}, Set→{}, Date→string.
-cluster.setupPrimary({ serialization: 'advanced' });
-
 const MIN_WORKERS = 1;
 const MAX_WORKERS = parseInt(process.env.WORKERS_MAX || '4', 10);
 const EXTERNAL_PORT = parseInt(process.env.PORT || '4321', 10);
@@ -32,6 +28,10 @@ const HOST = process.env.HOST || '0.0.0.0';
 let targetWorkers = parseInt(process.env.WORKERS || '1', 10);
 
 if (cluster.isPrimary) {
+  // V8 serialization for IPC — natively handles Map, Set, Date, RegExp, ArrayBuffer.
+  // Must be called before fork() and only in primary process.
+  cluster.setupPrimary({ serialization: 'advanced' });
+
   // ─── Shared response cache (owned by primary) ───
   const MAX_CACHE = parseInt(process.env.CACHE_ENTRIES || '5000', 10);
   const responseCache = new Map(); // key → { compressed, contentType, cacheControl, hits }
