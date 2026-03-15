@@ -8,8 +8,58 @@ import precomputed from '../data/precomputed.json';
 // Permanent — data is static, container restart = cache invalidation.
 const queryCache = new Map<string, any>();
 export function getQueryCacheSize(): number { return queryCache.size; }
+
+const IS_CLUSTER_WORKER = process.env.WORKER_INTERNAL === '1';
+const pendingIpc = new Map<string, Array<{ resolve: (v: any) => void }>>();
+
+if (IS_CLUSTER_WORKER) {
+  process.on('message', (msg: any) => {
+    if (msg?.type === 'qcache-result') {
+      const waiters = pendingIpc.get(msg.key);
+      if (waiters) {
+        pendingIpc.delete(msg.key);
+        if (msg.hit) {
+          queryCache.set(msg.key, msg.value);
+          for (const w of waiters) w.resolve(msg.value);
+        } else {
+          for (const w of waiters) w.resolve(null);
+        }
+      }
+    }
+  });
+}
+
 function cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
   if (queryCache.has(key)) return Promise.resolve(queryCache.get(key) as T);
+
+  if (IS_CLUSTER_WORKER && process.send) {
+    return new Promise<T>((resolve) => {
+      if (pendingIpc.has(key)) {
+        pendingIpc.get(key)!.push({ resolve: resolve as any });
+        return;
+      }
+      pendingIpc.set(key, [{ resolve: resolve as any }]);
+      process.send!({ type: 'qcache-get', key });
+      setTimeout(() => {
+        if (pendingIpc.has(key)) {
+          pendingIpc.delete(key);
+          compute().then(result => {
+            queryCache.set(key, result);
+            if (process.send) process.send({ type: 'qcache-set', key, value: result });
+            resolve(result);
+          });
+        }
+      }, 200);
+    }).then(val => {
+      if (val !== null) return val as T;
+      return compute().then(result => {
+        queryCache.set(key, result);
+        if (process.send) process.send({ type: 'qcache-set', key, value: result });
+        return result;
+      });
+    });
+  }
+
   return compute().then(result => { queryCache.set(key, result); return result; });
 }
 

@@ -50,29 +50,29 @@ function getRollingMetrics() {
   return { requestRate: rate, avgLatency: avg };
 }
 
-// --- Cache warming ---
+// --- Background batched cache warming ---
+// Only the first cluster worker (CACHE_WARM_WORKER=1) runs proactive warming.
+// Additional workers populate cache lazily from real traffic — no duplicate CPU work.
 let cacheWarmed = false;
 let cacheWarmedAt: string | null = null;
-let warmingPromise: Promise<void> | null = null;
 
-async function ensureWarmed(): Promise<void> {
-  if (cacheWarmed) return;
-  if (!warmingPromise) {
-    warmingPromise = (async () => {
-      const database = getDb();
-      if (!database) { cacheWarmed = true; return; }
-      try {
-        await warmQueryCache(database);
-        cacheWarmedAt = new Date().toISOString();
-      } catch (err) {
-        console.error('[cache] Warming failed:', err);
-      }
-      cacheWarmed = true;
-    })();
-  }
-  await warmingPromise;
+const IS_WARM_WORKER = process.env.CACHE_WARM_WORKER !== '0';
+
+function startBackgroundWarming(): void {
+  if (!IS_WARM_WORKER) { cacheWarmed = true; return; }
+  const database = getDb();
+  if (!database) { cacheWarmed = true; return; }
+  (async () => {
+    try {
+      await warmQueryCache(database);
+      cacheWarmedAt = new Date().toISOString();
+    } catch (err) {
+      console.error('[cache] Warming failed:', err);
+    }
+    cacheWarmed = true;
+  })();
 }
-ensureWarmed();
+startBackgroundWarming();
 
 // --- Compressed LRU response cache ---
 interface CacheEntry {
@@ -150,22 +150,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const path = context.url.pathname;
   (context.locals as any).runtime = { env: { DB: getDb() } };
 
-  // Fast-path: health endpoint
-  if (path === '/health') {
-    if (!cacheWarmed) {
-      ensureWarmed();
-      return new Response('{"status":"warming"}', {
-        status: 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-      });
-    }
-    return next();
-  }
+  // Fast-path: health endpoint — always available, even during warming
+  if (path === '/health') return next();
 
   // Fast-path: static assets + cluster management
   if (path.charCodeAt(1) === 95) return next(); // starts with '/_' (_astro, _cluster)
   if (path.startsWith('/fav')) return next();
 
-  if (!cacheWarmed) await ensureWarmed();
+  // No blocking — requests always proceed. Cache hits use cache, misses go to DB.
 
   if (context.request.method === 'GET') {
     const cacheKey = path + context.url.search;
