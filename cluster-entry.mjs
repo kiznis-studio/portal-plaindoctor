@@ -20,6 +20,10 @@ import cluster from 'node:cluster';
 import http from 'node:http';
 import { gzipSync, gunzipSync } from 'node:zlib';
 
+// Use V8 serialization for IPC — natively handles Map, Set, Date, RegExp, ArrayBuffer.
+// Without this, process.send() uses JSON which silently converts Map→{}, Set→{}, Date→string.
+cluster.setupPrimary({ serialization: 'advanced' });
+
 const MIN_WORKERS = 1;
 const MAX_WORKERS = parseInt(process.env.WORKERS_MAX || '4', 10);
 const EXTERNAL_PORT = parseInt(process.env.PORT || '4321', 10);
