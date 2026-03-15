@@ -1,31 +1,58 @@
-# Robots.txt for plaindoctor
-
+# plaindoctor — All crawlers welcome
 User-agent: *
 Allow: /
 
-# Sitemaps
-Sitemap: https://plaindoctor.com/sitemap-index.xml
+# Sitemap: https://plaindoctor.com/sitemap-index.xml
 
-# AI Crawler Governance
-# Citation bots — ALLOWED (these link back to your content)
+# Search Engine Crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# AI Search & Citation Bots
 User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: Claude-SearchBot
 Allow: /
 
 User-agent: Claude-User
 Allow: /
 
+User-agent: ClaudeBot
+Allow: /
+
 User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Meta-ExternalAgent
 Allow: /
 
 User-agent: CCBot
 Allow: /
 
-# Training bots — BLOCKED (scrape for model training, no attribution)
-User-agent: GPTBot
-Disallow: /
-
-User-agent: anthropic-ai
-Disallow: /
-
 User-agent: Google-Extended
-Disallow: /
+Allow: /
+
+User-agent: MistralAI-User
+Allow: /
