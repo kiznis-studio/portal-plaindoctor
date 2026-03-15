@@ -1,12 +1,12 @@
 ---
 interface Props {
-  slot: 'top' | 'mid' | 'bottom';
+  position: 'top' | 'mid' | 'bottom';
 }
-const { slot } = Astro.props;
-const format = slot === 'mid' ? 'fluid' : 'auto';
+const { position } = Astro.props;
+const format = position === 'mid' ? 'fluid' : 'auto';
 ---
 
-<aside class:list={['ad-slot', `ad-slot-${slot}`]} aria-label="Advertisement">
+<aside class:list={['ad-slot', `ad-slot-${position}`]} aria-label="Advertisement">
   <div class="ad-slot-inner">
     <ins class="adsbygoogle"
       style="display:block"

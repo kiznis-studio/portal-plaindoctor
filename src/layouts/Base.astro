@@ -116,13 +116,13 @@ const breadcrumbSchema = (() => {
   </head>
   <body class="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
     <Header />
-    <AdSlot slot="top" />
+    <AdSlot position="top" />
 
     <main class="flex-1">
       <slot />
     </main>
 
-    <AdSlot slot="bottom" />
+    <AdSlot position="bottom" />
     <Footer />
   </body>
 </html>
