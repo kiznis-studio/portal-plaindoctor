@@ -371,16 +371,10 @@ export function getPrescriberStatsByState(db: D1Database, stateAbbr: string): Pr
 } | null> {
   return cached(`prescriber-stats:${stateAbbr}`, async () => {
     return db.prepare(`
-      SELECT
-        COUNT(*) as prescribers,
-        SUM(ps.total_claims) as total_claims,
-        SUM(ps.total_drug_cost) as total_cost,
-        ROUND(AVG(ps.total_drug_cost)) as avg_cost_per_prescriber,
-        SUM(CASE WHEN ps.opioid_claims > 0 THEN 1 ELSE 0 END) as opioid_prescribers,
-        ROUND(AVG(CASE WHEN ps.opioid_prescriber_rate IS NOT NULL THEN ps.opioid_prescriber_rate END), 1) as avg_opioid_rate
-      FROM prescriber_summary ps
-      JOIN providers p ON p.npi = ps.npi
-      WHERE p.state = ?
+      SELECT prescribers, total_claims, total_cost,
+        avg_cost_per_prescriber, opioid_prescribers, avg_opioid_rate
+      FROM prescriber_state_stats
+      WHERE state = ?
     `).bind(stateAbbr).first();
   });
 }
