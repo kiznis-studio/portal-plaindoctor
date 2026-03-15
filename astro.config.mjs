@@ -7,8 +7,12 @@ export default defineConfig({
   output: 'server',
   adapter: node({ mode: 'standalone' }),
   site: 'https://plaindoctor.com',
+  build: {
+    inlineStylesheets: 'auto',
+  },
   vite: {
     plugins: [tailwindcss()],
+    build: { target: 'es2022' },
   },
   integrations: [
     sentry({
